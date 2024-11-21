@@ -1,0 +1,9 @@
+CloudHarvestCorePluginManager @ git+https://github.com/Cloud-Harvest/CloudHarvestCorePluginManager.git@main
+CloudHarvestCoreTasks @ git+https://github.com/Cloud-Harvest/CloudHarvestCoreTasks.git@main
+Flask
+PyYAML
+flatten-json
+pymongo
+pytest
+redis
+requests
