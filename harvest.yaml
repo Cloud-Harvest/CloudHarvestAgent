@@ -1,0 +1,73 @@
+# Description: Configuration file for the CloudHarvestAgent
+
+# Configuration for the Agent
+agent:
+  connection:
+    # Hostname or IP address the agent should bind to
+    host: binding-address-here
+
+    # Port the agent should bind to
+    port: 8000
+
+  logging:
+    # Location where logs should be stored
+    location: ./app/logs/
+
+    # Logging level for the agent. Values are DEBUG, INFO, WARNING, ERROR, CRITICAL
+    level: DEBUG
+
+    # Suppress console output from the logging engine.
+    # quiet: true
+
+  # Configuration for TaskChains and Queue Management
+  tasks:
+
+    # Set which TaskChains are allowed to run on this agent. By default, all TaskChains are allowed; however, in larger
+    # deployments, you may want to restrict the TaskChains that can run on a given agent, providing dedicated agents.
+    accepted_chain_priorities:
+      - 0   # Escalated
+      - 1   # Client
+      - 2   # Scheduled
+
+    # Frequency in seconds at which the agent reports progress on running TaskChains.
+    chain_progress_reporting_interval_seconds: 6
+
+    # Prevent certain TaskChains from running on this agent by specifying the Chain's registered task name. By default,
+    # all Tasks and TaskChains are allowed to run on an agent. Selective agent configuration is useful in larger
+    # deployments where multiple agents run in different environments which should be otherwise isolated. By limiting
+    # what task can be run by the agent, you can ensure that the agent only runs TaskChains that are compatible with
+    # its environment. For instance, an agent running in AWS may not also have access to Azure, so you could restrict
+    # the agent from running TaskChains with the `azure` task.
+    chain_task_restrictions:
+      # - task_name: aws
+      #   reason: This agent is not configured to perform TaskChains with the `aws` task.
+
+    # Maximum number of seconds a TaskChain can run before being issued the 'terminate' command.
+    chain_timeout_seconds: 7200
+
+    # How often the agent checks for new TaskChains in the queue when it has slots available.
+    queue_check_interval_seconds: 5
+
+    # The maximum number of seconds a TaskChain can be delayed before being returned to the queue.
+    max_chain_delay_seconds: 300
+
+    # Maximum number of threads a TaskChain can use at one time.
+    max_running_chains: 10
+
+    # Maximum number of TaskChains that can be queued in this agent at any given time.
+    max_chain_queue_depth: 10
+
+  metrics:
+    # The interval in seconds at which the agent will report metrics to the API.
+    reporting_interval_seconds: 6
+
+# Configuration for the API.
+api:
+  # Endpoint for the CloudHarvestApi
+  host: api-hostname-here
+
+  # Port for the Api
+  port: 8000
+
+  # API token for authentication
+  # token: api-token-here

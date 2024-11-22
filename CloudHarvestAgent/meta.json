@@ -1,0 +1,11 @@
+{
+    "author": "Cloud Harvest, Fiona June Leathers",
+    "classifiers": [
+        "Programming Language :: Python :: 3.12"
+    ],
+    "description": "This is the Core Task system for CloudHarvest.",
+    "license": "CC Attribution-NonCommercial-ShareAlike 4.0 International",
+    "name": "CloudHarvestCoreTasks",
+    "url": "https://github.com/Cloud-Harvest/CloudHarvestAgent",
+    "version": "0.0.1"
+}
