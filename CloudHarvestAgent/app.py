@@ -4,6 +4,9 @@ logger = getLogger('harvest')
 
 
 class CloudHarvestAgent:
+    """
+    A static class which contains the Flask application, JobQueue instance, and configuration for the agent.
+    """
     from .agent import Api, JobQueue
     api: Api = None
     app = None
