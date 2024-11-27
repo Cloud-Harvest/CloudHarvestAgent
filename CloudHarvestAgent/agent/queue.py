@@ -1,7 +1,5 @@
 from logging import getLogger
-from typing import Dict, List, Literal
-
-from CloudHarvestCoreTasks.silos import get_silo
+from typing import Dict, List
 from CloudHarvestCoreTasks.tasks import BaseTaskChain, TaskStatusCodes
 
 logger = getLogger('harvest')
@@ -10,7 +8,7 @@ logger = getLogger('harvest')
 class JobQueue(Dict[str, BaseTaskChain]):
     """
     The JobQueue class is responsible for checking the Redis queue for new tasks and adding them to the queue. It also
-    reports the status of any running task chains to the harvest-agent-status silo.
+    reports the status of any running task chains to the harvest-agents silo.
     """
     from .api import Api
 
@@ -80,7 +78,6 @@ class JobQueue(Dict[str, BaseTaskChain]):
         self.status = TaskStatusCodes.initialized
         self.stop_time = None
 
-
     def _on_chain_complete(self, task_chain_id: str):
         """
         A callback that is called when a task chain completes. It sends the chain's final results to the harvest-agent-results
@@ -88,12 +85,11 @@ class JobQueue(Dict[str, BaseTaskChain]):
         :return:
         """
         from CloudHarvestCoreTasks.silos import get_silo
+        # Update the harvest-tasks silo with the task chain status
+        harvest_tasks_silo = get_silo('harvest-tasks')
 
-        # Update the status of the task chain to the harvest-agent-queue-status silo
-        argent_queue_status = get_silo('harvest-agent-queue-status')
-
-        # Send the final results to the harvest-agent-results silo
-        pass
+        # Send the final results to the harvest-task-results silo
+        harvest_task_results_silo = get_silo('harvest-task-results')
 
         # Remove the task chain from the JobQueue
         self.pop(task_chain_id, None)
@@ -109,7 +105,7 @@ class JobQueue(Dict[str, BaseTaskChain]):
         from time import sleep
 
         while True:
-            reporting_silo = StrictRedis(**self._silos.get('harvest-jobs-status'))
+            reporting_silo = StrictRedis(**self._silos.get('harvest-tasks'))
 
             try:
 
@@ -151,6 +147,46 @@ class JobQueue(Dict[str, BaseTaskChain]):
 
             sleep(self.queue_check_interval_seconds)
 
+
+    def detailed_status(self) -> dict:
+        """
+        Returns detailed status information about the JobQueue.
+        :return:
+        """
+
+        from CloudHarvestCoreTasks.tasks import TaskStatusCodes
+
+        result = {
+            'chain_status': {
+                str(status_code): sum(1 for task in self.values() if task.status == status_code)
+                for status_code in TaskStatusCodes
+            },
+            'duration': self.duration,
+            'max_running_chains': self.max_running_chains,
+            'start_time': self.start_time,
+            'status': self.status,
+            'stop_time': self.stop_time,
+            'total_chains_in_queue': len(self)
+        }
+
+        return result
+
+    @property
+    def duration(self) -> float:
+        """
+        Returns the duration of the JobQueue in seconds.
+        :return:
+        """
+        from datetime import datetime
+
+        if self.stop_time:
+            result = (self.stop_time - self.start_time).total_seconds()
+
+        else:
+            result = (datetime.now() - self.start_time).total_seconds()
+
+        return result
+
     def get_chain_status(self, task_chain_id: str) -> dict:
         """
         Retrieves the status of a task chain.
@@ -185,19 +221,37 @@ class JobQueue(Dict[str, BaseTaskChain]):
 
         return unflatten(flat_dictionary, separator=separator)
 
-    def start(self) -> str:
+    def start(self) -> dict:
         """
         Starts the job queue process.
-        :return: the status of the job queue.
+        :return: A dictionary containing the result and message.
         """
 
+        # Set the queue status to 'running'
         self.status = JobQueueStatusCodes.running
 
-        from threading import Thread
-        self._reporting_thread = Thread(target=self._thread_reporting, daemon=True)
-        self._queue_check_thread = Thread(target=self._thread_check_queue, daemon=True)
+        # Reset the stop time
+        self.stop_time = None
 
-        return self.status
+        try:
+
+            # Start the reporting and queue check threads
+            from threading import Thread
+            self._reporting_thread = Thread(target=self._thread_reporting, daemon=True)
+            self._queue_check_thread = Thread(target=self._thread_check_queue, daemon=True)
+
+        except Exception as ex:
+            message = f'Error while starting the JobQueue: {ex.args}'
+            logger.error(message)
+            self.status = JobQueueStatusCodes.error
+
+        else:
+            message = 'JobQueue started successfully.'
+
+        return {
+            'result': self.status,
+            'message': message
+        }
 
     def stop(self, finish_running_jobs: bool = True, timeout: int = 60) -> dict:
         """

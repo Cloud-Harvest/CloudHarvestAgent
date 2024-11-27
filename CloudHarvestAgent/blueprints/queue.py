@@ -1,3 +1,5 @@
+from ..app import CloudHarvestAgent
+
 from blueprints.base import HarvestBlueprint
 from flask import Response, jsonify, request
 from json import loads
@@ -10,16 +12,26 @@ queue_blueprint = HarvestBlueprint(
     url_prefix='/queue'
 )
 
+@queue_blueprint.route(rule='start', methods=['GET'])
+def start() -> Response:
+    result = CloudHarvestAgent.job_queue.start()
+
+    return jsonify(result)
+
+
 @queue_blueprint.route(rule='stop', methods=['GET'])
 def stop() -> Response:
-    pass
+    result = CloudHarvestAgent.job_queue.stop()
+
+    return jsonify(result)
+
 
 @queue_blueprint.route(rule='status', methods=['GET'])
 def status() -> Response:
-    pass
-
-@queue_blueprint.route(rule='escalate', methods=['GET'])
-def escalate() -> Response:
-    pass
+    return jsonify(CloudHarvestAgent.job_queue.status())
 
 
+# Escalation of tasks is done at the API level
+# @queue_blueprint.route(rule='escalate/<task_chain_id>', methods=['GET'])
+# def escalate(task_chain_id: str) -> Response:
+#     pass
