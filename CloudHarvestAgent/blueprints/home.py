@@ -11,8 +11,12 @@ home_blueprint = HarvestBlueprint(
 
 
 @home_blueprint.route(rule='/', methods=['GET'])
-def cache_collect() -> Response:
-    return jsonify('Successful')
+def home() -> Response:
+    """
+    The root endpoint for the Harvest Agent.
+    """
+
+    return jsonify('Successfully reached a CloudHarvestAgent instance.')
 
 
 @home_blueprint.errorhandler(400)
