@@ -1,9 +1,11 @@
+"""
+The queue blueprint is responsible for managing the job queue.
+"""
+
 from ..app import CloudHarvestAgent
 
-from blueprints.base import HarvestBlueprint
+from base import HarvestBlueprint
 from flask import Response, jsonify, request
-from json import loads
-from typing import Any, List
 
 
 # Blueprint Configuration
@@ -14,6 +16,10 @@ queue_blueprint = HarvestBlueprint(
 
 @queue_blueprint.route(rule='start', methods=['GET'])
 def start() -> Response:
+    """
+    Starts the job queue.
+    """
+
     result = CloudHarvestAgent.job_queue.start()
 
     return jsonify(result)
@@ -21,6 +27,10 @@ def start() -> Response:
 
 @queue_blueprint.route(rule='stop', methods=['GET'])
 def stop() -> Response:
+    """
+    Stops the job queue.
+    """
+
     result = CloudHarvestAgent.job_queue.stop()
 
     return jsonify(result)
@@ -28,6 +38,10 @@ def stop() -> Response:
 
 @queue_blueprint.route(rule='status', methods=['GET'])
 def status() -> Response:
+    """
+    Returns the status of the job queue.
+    """
+
     return jsonify(CloudHarvestAgent.job_queue.status())
 
 
