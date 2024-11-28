@@ -2,12 +2,12 @@
 The queue blueprint is responsible for managing the job queue.
 """
 
-from .base import HarvestBlueprint
+from CloudHarvestCoreTasks.blueprints import HarvestAgentBlueprint
 from flask import Response, jsonify, request
 
 
 # Blueprint Configuration
-queue_blueprint = HarvestBlueprint(
+queue_blueprint = HarvestAgentBlueprint(
     'queue_bp', __name__,
     url_prefix='/queue'
 )

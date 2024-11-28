@@ -2,10 +2,10 @@
 The home blueprint for the Harvest Agent. It handles the root endpoint and error handling.
 """
 
-from .base import HarvestBlueprint
+from CloudHarvestCoreTasks.blueprints import HarvestAgentBlueprint
 from flask import Response, jsonify
 
-home_blueprint = HarvestBlueprint(
+home_blueprint = HarvestAgentBlueprint(
     'home_bp', __name__
 )
 

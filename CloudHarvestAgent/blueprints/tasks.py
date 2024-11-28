@@ -2,11 +2,11 @@
 This module contains the blueprint for the tasks endpoint of the CloudHarvestAgent API.
 """
 
-from .base import HarvestBlueprint
+from CloudHarvestCoreTasks.blueprints import HarvestAgentBlueprint
 from flask import Response, jsonify, request
 
 # Blueprint Configuration
-tasks_blueprint = HarvestBlueprint(
+tasks_blueprint = HarvestAgentBlueprint(
     'tasks_bp', __name__,
     url_prefix='/tasks'
 )

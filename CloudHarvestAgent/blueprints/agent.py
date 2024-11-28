@@ -2,7 +2,7 @@
 The agent blueprint is responsible for managing the Flask agent.s
 """
 
-from .base import HarvestBlueprint
+from CloudHarvestCoreTasks.blueprints import HarvestAgentBlueprint
 from flask import Response, jsonify, request
 from json import loads
 from logging import getLogger
@@ -10,7 +10,7 @@ from logging import getLogger
 logger = getLogger('harvest')
 
 # Blueprint Configuration
-agent_blueprint = HarvestBlueprint(
+agent_blueprint = HarvestAgentBlueprint(
     'agent_bp', __name__,
     url_prefix='/agent'
 )
