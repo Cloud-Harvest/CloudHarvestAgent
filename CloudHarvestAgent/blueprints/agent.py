@@ -2,7 +2,7 @@
 The agent blueprint is responsible for managing the Flask agent.s
 """
 
-from base import HarvestBlueprint
+from .base import HarvestBlueprint
 from flask import Response, jsonify, request
 from json import loads
 from logging import getLogger

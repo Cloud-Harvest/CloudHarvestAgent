@@ -1,4 +1,8 @@
-from base import HarvestBlueprint
+"""
+This module contains the blueprint for the tasks endpoint of the CloudHarvestAgent API.
+"""
+
+from .base import HarvestBlueprint
 from flask import Response, jsonify, request
 
 # Blueprint Configuration
