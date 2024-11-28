@@ -1,26 +1,38 @@
-# Register all the classes which use the @register decorator
+"""
+Entrypoint for the CloudHarvestAgent
+"""
+# Imports objects which need to be registered by the CloudHarvestCorePluginManager
 from __register__ import *
 
 
 def main(**kwargs):
-    from startup import load_logging
-    logger = load_logging(log_destination=kwargs.get('logging.location'),
-                          log_level=kwargs.get('logging.level'),
-                          quiet=kwargs.get('logging.quiet'))
-
-    logger.info('Agent configuration loaded successfully')
-
-    from flask import Flask
-    from .app import CloudHarvestAgent
+    from app import CloudHarvestAgent
 
     # Raw configuration for the agent
     CloudHarvestAgent.config = kwargs
 
-    # Instantiate the Flask app
-    CloudHarvestAgent.app = Flask('CloudHarvestAgent', instance_relative_config=False)
+    # Instantiate the Flask object
+    from flask import Flask
+    CloudHarvestAgent.app = Flask('CloudHarvestAgent')
+
+    # Find all plugins and register their objects
+    from CloudHarvestCorePluginManager.functions import register_objects
+    register_objects()
+
+    # Register the blueprints from this app and all plugins
+    from CloudHarvestCorePluginManager.registry import Registry
+    with CloudHarvestAgent.app.app_context():
+        [
+            CloudHarvestAgent.app.register_blueprint(api_blueprint)
+            for api_blueprint in Registry.find(result_key='instances',
+                                               name='harvest_blueprint',
+                                               category='harvest_agent_blueprint')
+            if api_blueprint is not None
+        ]
+
     CloudHarvestAgent.app.run(**kwargs)
 
-    logger.warning('Agent stopped')
+    print('Agent stopped')
 
 if __name__ == '__main__':
     from yaml import load, SafeLoader
@@ -36,7 +48,9 @@ if __name__ == '__main__':
                 agent_configuration = load(agent_file, Loader=SafeLoader)
 
             from flatten_json import flatten_preserve_lists
-            agent_configuration = flatten_preserve_lists(agent_configuration, separator='.')
+
+            # flatten_preserve_lists returns a List[Dict[str, Any]] but we want a Dict[str, Any]
+            agent_configuration = flatten_preserve_lists(agent_configuration, separator='.')[0]
 
             break
 
