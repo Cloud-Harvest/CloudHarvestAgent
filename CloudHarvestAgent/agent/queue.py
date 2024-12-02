@@ -91,6 +91,8 @@ class JobQueue(Dict[str, BaseTaskChain]):
         # Send the final results to the harvest-task-results silo
         harvest_task_results_silo = get_silo('harvest-task-results')
 
+
+
         # Remove the task chain from the JobQueue
         self.pop(task_chain_id, None)
 
@@ -226,6 +228,8 @@ class JobQueue(Dict[str, BaseTaskChain]):
         Starts the job queue process.
         :return: A dictionary containing the result and message.
         """
+
+        logger.info('Starting the JobQueue.')
 
         # Set the queue status to 'running'
         self.status = JobQueueStatusCodes.running

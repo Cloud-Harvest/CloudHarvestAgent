@@ -39,11 +39,11 @@ def stop() -> Response:
 @queue_blueprint.route(rule='status', methods=['GET'])
 def status() -> Response:
     """
-    Returns the status of the job queue.
+    Returns a detailed status of the job queue.
     """
     from ..app import CloudHarvestAgent
 
-    return jsonify(CloudHarvestAgent.job_queue.status())
+    return jsonify(CloudHarvestAgent.job_queue.detailed_status())
 
 
 # Escalation of tasks is done at the API level

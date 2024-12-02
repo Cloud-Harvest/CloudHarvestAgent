@@ -4,6 +4,10 @@ This module contains the blueprint for the tasks endpoint of the CloudHarvestAge
 
 from CloudHarvestCoreTasks.blueprints import HarvestAgentBlueprint
 from flask import Response, jsonify, request
+from logging import getLogger
+
+logger = getLogger('harvest')
+
 
 # Blueprint Configuration
 tasks_blueprint = HarvestAgentBlueprint(
@@ -28,6 +32,7 @@ def terminate(task_id: str) -> Response:
     task_object = CloudHarvestAgent.job_queue.get(task_id)
 
     if task_object is None:
+        logger.warning(f'Attempt to terminate task {task_id} failed. No task with that name was found.')
         return jsonify({'error': 'Task not found.'})
 
     else:

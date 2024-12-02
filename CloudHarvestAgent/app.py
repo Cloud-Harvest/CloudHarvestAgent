@@ -149,6 +149,6 @@ def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', 
 
     new_logger.setLevel(log_level_attribute)
 
-    new_logger.debug('logging: enabled')
+    new_logger.debug(f'Logging enabled successfully. Log location: {log_destination}')
 
     return new_logger
