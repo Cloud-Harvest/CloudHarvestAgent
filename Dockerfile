@@ -1,4 +1,4 @@
-FROM python:3.13-bookworm as python
+FROM python:3.13-bookworm AS python
 
 WORKDIR /src
 
