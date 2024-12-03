@@ -4,7 +4,7 @@
 agent:
   connection:
     # Hostname or IP address the agent should bind to
-    host: binding-address-here
+    host: 127.0.0.1
 
     # Port the agent should bind to
     port: 8000

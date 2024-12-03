@@ -33,43 +33,45 @@ class Api:
         }
         """
 
-        from requests import get, post, put, delete, ConnectionError, Timeout, HTTPError, RequestException
+        from requests import get, post, put, delete
 
         from uuid import uuid4
         request_id = str(uuid4())
 
-        request_types = {
-            'get': get,
-            'post': post,
-            'put': put,
-            'delete': delete
-        }
-
         response = None
 
         try:
+            from requests.api import request
             logger.debug(f'request:{request_id}: {self.host}:{self.port}/{endpoint}')
-            response = request_types[request_type](f'https://{self.host}:{self.port}/{endpoint}',
-                                                   headers={'Authorization': f'Bearer {self.token}'},
-                                                   json=data,
-                                                   **requests_kwargs)
-
-        except ConnectionError as e:
-            logger.error(f'request:{request_id}:Connection error occurred: {e}')
-
-        except Timeout as e:
-            logger.error(f'request:{request_id}:Timed out: {e}')
-
-        except HTTPError as e:
-            logger.error(f'request:{request_id}:HTTP error occurred: {e}')
-
-        except RequestException as e:
-            logger.error(f'request:{request_id}:Error making API request: {e}')
+            response = request(method=request_type,
+                               url=f'https://{self.host}:{self.port}/{endpoint}',
+                               headers={
+                                   'Authorization': f'Bearer {self.token}'
+                               },
+                               json=data,
+                               **requests_kwargs)
 
         except Exception as e:
             logger.error(f'request:{request_id}:An unexpected error occurred: {e}')
 
+            if response:
+                return {
+                    'id': request_id,
+                    'status_code': response.status_code,
+                    'error': f'{str(e)}: {e.args}',
+                    'response': response.json()
+                }
+
+            else:
+                return {
+                    'id': request_id,
+                    'status_code': 500,
+                    'error': f'{str(e)}: {e.args}',
+                    'response': {}
+                }
+
         return {
+            'id': request_id,
             'status_code': response.status_code,
             'response': response.json()
         }

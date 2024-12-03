@@ -11,27 +11,12 @@ class CloudHarvestAgent:
     A static class which contains the Flask application, JobQueue instance, and configuration for the agent.
     """
     from agent import Api, JobQueue
+    from flask import Flask
     api: Api = None
-    app = None
+    flask: Flask = None
     config = {}
     job_queue: JobQueue = None
 
-    # Maps the flattened YAML configuration to the JobQueue configuration
-    # Format: (job_queue_key, configuration_key)
-    JOB_QUEUE_CONFIGURATION_MAPPING = (
-        ('api_host', 'api.host'),
-        ('api_port', 'api.port'),
-        ('api_token', 'api.token'),
-        ('accepted_chain_priorities', 'agent.tasks.accepted_chain_priorities'),
-        ('chain_progress_reporting_interval_seconds', 'agent.tasks.chain_progress_reporting_interval_seconds'),
-        ('chain_task_restrictions', 'agent.tasks.chain_task_restrictions'),
-        ('chain_timeout_seconds', 'agent.tasks.chain_timeout_seconds'),
-        ('queue_check_interval_seconds', 'agent.tasks.queue_check_interval_seconds'),
-        ('max_chain_delay_seconds', 'agent.tasks.max_chain_delay_seconds'),
-        ('max_running_chains', 'agent.tasks.max_running_chains'),
-        ('max_chain_queue_depth', 'agent.tasks.max_chain_queue_depth'),
-        ('reporting_interval_seconds', 'agent.metrics.reporting_interval_seconds')
-    )
 
     @staticmethod
     def run(**kwargs):
@@ -40,41 +25,38 @@ class CloudHarvestAgent:
         application. It accepts all keyword arguments provided by the configuration file.
         """
 
+        flat_kwargs = flatten_dict_preserve_lists(kwargs)
+
         # Configure logging
-        logger = load_logging(log_destination=kwargs.get('logging.location'),
-                              log_level=kwargs.get('logging.level'),
-                              quiet=kwargs.get('logging.quiet'))
+        logger = load_logging(log_destination=flat_kwargs.get('agent.logging.location'),
+                              log_level=flat_kwargs.get('agent.logging.level'),
+                              quiet=flat_kwargs.get('agent.logging.quiet'))
 
         logger.info('Agent configuration loaded successfully.')
 
         logger.info('Agent starting')
 
-        # Create the JobQueue using the kwargs provided by the configuration
-        from flatten_json import flatten_preserve_lists
-        flat_kwargs = flatten_preserve_lists(kwargs, separator='.')
-
         # Create a new API interface which will be used to communicate with the CloudHarvestApi
-        CloudHarvestAgent.api = CloudHarvestAgent.Api(host=kwargs['api.host'],
-                                                      port=kwargs['api.port'],
-                                                      token=kwargs['api.token'])
+        CloudHarvestAgent.api = CloudHarvestAgent.Api(host=flat_kwargs.get('api.host'),
+                                                      port=flat_kwargs.get('api.port'),
+                                                      token=flat_kwargs.get('api.token'))
 
-        # Retrieves the silo configurations and implements them for the TaskChains
+        # Retrieves the silo configurations used by the agent and TaskChains
         CloudHarvestAgent.refresh_silos()
 
-        # Map the flattened configuration to the JobQueue configuration
-        job_queue_kwargs = {
-            job_queue_key: flat_kwargs[configuration_key]
-            for job_queue_key, configuration_key in CloudHarvestAgent.JOB_QUEUE_CONFIGURATION_MAPPING
-        }
-
         # Instantiate the JobQueue
-        CloudHarvestAgent.job_queue = CloudHarvestAgent.JobQueue(api=CloudHarvestAgent.api, **job_queue_kwargs)
+        queue = CloudHarvestAgent.JobQueue(api=CloudHarvestAgent.api,
+                                           reporting_interval_seconds=flat_kwargs.get('agent.metrics.reporting_interval_seconds'),
+                                           **{k[12:]: v for k, v in flat_kwargs.items() if k.startswith('agent.tasks.')})
+
+        CloudHarvestAgent.job_queue = queue
         CloudHarvestAgent.job_queue.start()
 
-        logger.info(f'Agent startup complete. Will serve requests on {CloudHarvestAgent.app.url_map}.')
+        logger.info(f'Agent startup complete. Will serve requests on {flat_kwargs.get("agent.connection.host")}:{flat_kwargs["agent.connection.port"]}.')
 
         # Start the Flask application
-        CloudHarvestAgent.app.run(**kwargs)
+        CloudHarvestAgent.flask.run(host=flat_kwargs.get('agent.connection.host', 'localhost'),
+                                    port=flat_kwargs.get('agent.connection.port', 8000))
 
     @staticmethod
     def refresh_silos():
@@ -84,7 +66,7 @@ class CloudHarvestAgent:
         """
 
         from CloudHarvestCoreTasks.silos import add_silo
-        silos = CloudHarvestAgent.api.request('get', 'silos/get')['response']
+        silos = CloudHarvestAgent.api.request('get', 'silos/get')['response'] or []
 
         # Update the silos to make sure they are up to date
         [
@@ -93,11 +75,59 @@ class CloudHarvestAgent:
         ]
 
 
+def flatten_dict_preserve_lists(d, parent_key='', sep='.') -> dict:
+    """
+    Flattens a dictionary while preserving lists.
+
+    Arguments
+    d (dict): The dictionary to flatten.
+    parent_key (str, optional): The parent key. Defaults to ''.
+    sep (str, optional): The separator to use. Defaults to '.'.
+
+    Returns
+    dict: The flattened dictionary.
+    """
+    items = []
+
+    for k, v in d.items():
+        new_key = f'{parent_key}{sep}{k}' if parent_key else k
+
+        if isinstance(v, dict):
+            items.extend(flatten_dict_preserve_lists(v, new_key, sep=sep).items())
+
+        else:
+            items.append((new_key, v))
+
+    return dict(items)
+
+
 #############################################
 # Startup methods                           #
 #############################################
 
-def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', quiet: bool = False) -> Logger:
+def load_configuration_from_file() -> dict:
+    from yaml import load, SafeLoader
+
+    agent_configuration = {}
+
+    # Select the first file of the list
+    for filename in ('../app/harvest.yaml', '../harvest.yaml'):
+        from os.path import exists
+
+        if exists(filename):
+            with open('../harvest.yaml') as agent_file:
+                agent_configuration = load(agent_file, Loader=SafeLoader)
+
+            # from flatten_json import flatten_preserve_lists
+
+            # flatten_preserve_lists returns a List[Dict[str, Any]] but we want a Dict[str, Any]
+            # agent_configuration = flatten_preserve_lists(agent_configuration, separator='.')[0]
+
+            break
+
+    return agent_configuration
+
+def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', quiet: bool = False, **kwargs) -> Logger:
     """
     This method configures logging for the Agent.
 
@@ -114,12 +144,16 @@ def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', 
     # startup
     new_logger = getLogger(name='harvest')
 
+    # If the logger exists, remove all of its existing handlers
+    if new_logger.hasHandlers():
+        [
+            new_logger.removeHandler(handler)
+            for handler in new_logger.handlers
+        ]
+
     from importlib import import_module
     lm = import_module('logging')
     log_level_attribute = getattr(lm, level.upper())
-
-    # clear existing log handlers anytime this library is called
-    [new_logger.removeHandler(handler) for handler in new_logger.handlers]
 
     # formatting
     log_format = Formatter(fmt='[%(asctime)s][%(levelname)s][%(filename)s] %(message)s')
@@ -140,7 +174,7 @@ def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', 
 
     new_logger.addHandler(fh)
 
-    if quiet is False:
+    if not quiet:
         # stream handler
         sh = StreamHandler()
         sh.setFormatter(fmt=log_format)

@@ -19,6 +19,14 @@ def home() -> Response:
     return jsonify('Successfully reached a CloudHarvestAgent instance.')
 
 
+@home_blueprint.route('/favicon.ico')
+def favicon():
+    """
+    The favicon endpoint.
+    :return: No content
+    """
+    return '', 204
+
 @home_blueprint.errorhandler(400)
 def bad_request_error(error):
     return jsonify({"error-code": "400", "error-message": "Bad Request"})
