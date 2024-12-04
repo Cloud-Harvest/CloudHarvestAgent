@@ -106,26 +106,26 @@ def flatten_dict_preserve_lists(d, parent_key='', sep='.') -> dict:
 #############################################
 
 def load_configuration_from_file() -> dict:
-    from yaml import load, SafeLoader
+    from yaml import load, FullLoader
 
-    agent_configuration = {}
+    configuration = {}
 
     # Select the first file of the list
-    for filename in ('../app/harvest.yaml', '../harvest.yaml'):
+    for filename in ('./app/harvest.yaml', './harvest.yaml'):
         from os.path import exists
 
         if exists(filename):
-            with open('../harvest.yaml') as agent_file:
-                agent_configuration = load(agent_file, Loader=SafeLoader)
-
-            # from flatten_json import flatten_preserve_lists
-
-            # flatten_preserve_lists returns a List[Dict[str, Any]] but we want a Dict[str, Any]
-            # agent_configuration = flatten_preserve_lists(agent_configuration, separator='.')[0]
+            with open(filename) as agent_file:
+                configuration = load(agent_file, Loader=FullLoader)
 
             break
 
-    return agent_configuration
+    # Remove any keys that start with a period. This allows YAML anchors to be used in the configuration file.
+    return {
+        k:v
+        for k, v in configuration.items() or {}
+        if not k.startswith('.')
+    }
 
 def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', quiet: bool = False, **kwargs) -> Logger:
     """

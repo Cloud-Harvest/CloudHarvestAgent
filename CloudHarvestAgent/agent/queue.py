@@ -1,5 +1,6 @@
 from logging import getLogger
-from typing import Dict, List
+from redis import StrictRedis
+from typing import Dict, List, Tuple
 from CloudHarvestCoreTasks.tasks import BaseTaskChain, TaskStatusCodes
 
 logger = getLogger('harvest')
@@ -136,19 +137,22 @@ class JobQueue(Dict[str, BaseTaskChain]):
         A thread that checks the Redis queue for new tasks and adds them to the JobQueue.
         :return:
         """
-        from redis import StrictRedis
+        from CloudHarvestCoreTasks.silos import get_silo
         from time import sleep
 
+        # TODO: Implement the queue checking logic
+
         while self.status != TaskStatusCodes.terminating:
-            for allowed_queue_priority in self.accepted_chain_priorities:
 
+            # When the queue is smaller than the maximum depth, add new tasks
+            if len(self.keys()) < self.max_chain_queue_depth:
+                silo: StrictRedis = get_silo('harvest-task-queue').connect()
 
-                # Escape the loop if the task chain is complete or terminating
-                if self.status in [TaskStatusCodes.complete, TaskStatusCodes.terminating]:
-                    break
+                oldest_task = get_oldest_task_from_queue(silo, self.accepted_chain_priorities)
+
+                
 
             sleep(self.queue_check_interval_seconds)
-
 
     def detailed_status(self) -> dict:
         """
@@ -300,6 +304,31 @@ class JobQueue(Dict[str, BaseTaskChain]):
             'result': result,
             'message': 'All task chains have completed.' if result else 'Timeout exceeded while waiting for task chains to complete.'
         }
+
+def get_oldest_task_from_queue(silo: StrictRedis, accepted_chain_priorities: List[int]) -> Tuple[str, str]:
+    """
+    Retrieves the oldest task from the queue.
+    :param silo: The Redis silo to retrieve the task from.
+    :param accepted_chain_priorities: A list of accepted chain priorities.
+    :return: The oldest task from the Redis database as a tuple of task_id and task.
+    """
+
+    # harvest-task-queue format:
+    #   name: {priority}:{task_chain_id}
+    #   value: {task_chain_json_payload}
+
+    for priority in accepted_chain_priorities:
+        # Retrieve the first 100 tasks from the queue where the priority matches
+        redis_names = silo.scan_iter(match=f'{priority}:*', count=100)
+
+        for redis_name in redis_names:
+            # Try to pop the first task from the queue
+            task_id = redis_name.split(':')[1]
+            task = silo.lpop(redis_name)
+
+            if task:
+                return task_id, task
+
 
 class JobQueueStatusCodes:
     complete = 'complete'

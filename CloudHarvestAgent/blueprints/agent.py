@@ -21,7 +21,9 @@ def reload() -> Response:
     Reloads the agent's configuration, allowing configurations to be updated without stopping the agent.
     """
     # TODO: Implement this method
-    pass
+
+    return Response('501 - Not implemented', status=501)
+
 
 @agent_blueprint.route(rule='shutdown', methods=['GET'])
 def shutdown() -> Response:
@@ -29,9 +31,10 @@ def shutdown() -> Response:
     Shuts down the agent.
     """
 
-    from ..app import CloudHarvestAgent
+    from app import CloudHarvestAgent
+    from .base import safe_request_get_json
 
-    request_json = loads(request.get_json())
+    request_json = safe_request_get_json(request)
 
     logger.warning('Received shutdown request.')
 
