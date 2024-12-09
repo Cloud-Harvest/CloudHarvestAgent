@@ -4,6 +4,7 @@ The queue blueprint is responsible for managing the job queue.
 
 from CloudHarvestCoreTasks.blueprints import HarvestAgentBlueprint
 from flask import Response, jsonify, request
+from .home import not_implemented_error
 
 
 # Blueprint Configuration
@@ -11,6 +12,22 @@ queue_blueprint = HarvestAgentBlueprint(
     'queue_bp', __name__,
     url_prefix='/queue'
 )
+
+@queue_blueprint.route(rule='inject', methods=['POST'])
+def inject():
+    """
+    Accepts a serialized TaskChain, puts it in the JobQueue, and immediately starts it.
+    :return: uuid of the instantiated TaskChain
+    """
+
+    # TODO: Implement this method
+
+    # from ..app import CloudHarvestAgent
+    #
+    # incoming_request = request.get_json()
+
+    return not_implemented_error()
+
 
 @queue_blueprint.route(rule='start', methods=['GET'])
 def start() -> Response:

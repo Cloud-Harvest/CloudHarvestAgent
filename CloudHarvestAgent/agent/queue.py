@@ -71,7 +71,8 @@ class JobQueue(Dict[str, BaseTaskChain]):
 
         # Threads
         self._reporting_thread = None
-        self._queue_check_thread = None
+        self._check_queue_thread = None
+        self._task_chain_threads = {}
 
         # Programmatic attributes
         from datetime import datetime, timezone
@@ -96,6 +97,38 @@ class JobQueue(Dict[str, BaseTaskChain]):
 
         # Remove the task chain from the JobQueue
         self.pop(task_chain_id, None)
+
+    def _thread_check_queue(self):
+        """
+        A thread that checks the Redis queue for new tasks and adds them to the JobQueue.
+        :return:
+        """
+        from CloudHarvestCoreTasks.silos import get_silo
+        from threading import Thread
+        from time import sleep
+
+        # If there is room in the queue, start adding tasks from the Redis queue
+        while not self.is_queue_full and self.status != TaskStatusCodes.terminating:
+            silo: StrictRedis = get_silo('harvest-task-queue').connect()
+            oldest_task = get_oldest_task_from_queue(silo, self.accepted_chain_priorities)
+
+            if oldest_task:
+                from json import loads
+                loaded_template = loads(oldest_task[0])
+                self.get_task_chain_from_template(task_template_name=loaded_template['task_template_name'],
+                                                  user_parameters=loaded_template['user_parameters'],
+                                                  tags=loaded_template.get('tags'),
+                                                  uuid=loaded_template.get('uuid'))
+
+            sleep(self.queue_check_interval_seconds)
+
+    @property
+    def is_queue_full(self) -> bool:
+        """
+        Returns a boolean indicating whether the queue is full.
+        :return:
+        """
+        return len(self.keys()) >= self.max_chain_queue_depth
 
     def _thread_reporting(self):
         """
@@ -131,28 +164,6 @@ class JobQueue(Dict[str, BaseTaskChain]):
 
             finally:
                 sleep(self.reporting_interval_seconds)
-
-    def _thread_check_queue(self):
-        """
-        A thread that checks the Redis queue for new tasks and adds them to the JobQueue.
-        :return:
-        """
-        from CloudHarvestCoreTasks.silos import get_silo
-        from time import sleep
-
-        # TODO: Implement the queue checking logic
-
-        while self.status != TaskStatusCodes.terminating:
-
-            # When the queue is smaller than the maximum depth, add new tasks
-            if len(self.keys()) < self.max_chain_queue_depth:
-                silo: StrictRedis = get_silo('harvest-task-queue').connect()
-
-                oldest_task = get_oldest_task_from_queue(silo, self.accepted_chain_priorities)
-
-                
-
-            sleep(self.queue_check_interval_seconds)
 
     def detailed_status(self) -> dict:
         """
@@ -246,7 +257,7 @@ class JobQueue(Dict[str, BaseTaskChain]):
             # Start the reporting and queue check threads
             from threading import Thread
             self._reporting_thread = Thread(target=self._thread_reporting, daemon=True)
-            self._queue_check_thread = Thread(target=self._thread_check_queue, daemon=True)
+            self._check_queue_thread = Thread(target=self._thread_check_queue, daemon=True)
 
         except Exception as ex:
             message = f'Error while starting the JobQueue: {ex.args}'
@@ -261,6 +272,40 @@ class JobQueue(Dict[str, BaseTaskChain]):
             'message': message
         }
 
+    def get_task_chain_from_template(self,
+                                     task_template_name: str,
+                                    user_parameters: dict,
+                                    tags: List[str] = None,
+                                    uuid: str = None) -> BaseTaskChain:
+        """
+        Instantiates a task chain from a task template and starts it.
+
+        Arguments
+        task_template_name (str): The name of the task template.
+        user_parameters (dict): The user parameters to pass to the task chain.
+        uuid (str): The UUID of the task chain.
+        """
+
+        from CloudHarvestCorePluginManager.registry import Registry
+        from CloudHarvestCoreTasks.tasks.factories import task_chain_from_dict
+
+        # Retrieve the task template from the registry
+        template = Registry.find(result_key='*',
+                                      category='template',
+                                      name=task_template_name,
+                                      tags=tags)[0]
+
+        task_chain = task_chain_from_dict(template=template, **user_parameters)
+
+        # Override the UUID if provided by the API
+        if uuid:
+            task_chain.uuid = uuid
+
+        # Add the task chain to the JobQueue
+        self[task_chain.uuid] = task_chain
+
+        return task_chain
+
     def stop(self, finish_running_jobs: bool = True, timeout: int = 60) -> dict:
         """
         Terminates the queue and reporting threads.
@@ -274,7 +319,7 @@ class JobQueue(Dict[str, BaseTaskChain]):
         self.status = JobQueueStatusCodes.stopping
 
         # Prevents the JobQueue from starting new tasks
-        self._queue_check_thread.join()
+        self._thread_check_queue.join()
 
         if not finish_running_jobs:
             logger.info('Ordering TaskChains to terminate.')
