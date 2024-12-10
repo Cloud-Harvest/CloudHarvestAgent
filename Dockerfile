@@ -7,8 +7,8 @@ ENV PIP_ROOT_USER_ACTION=ignore
 COPY . .
 
 RUN /bin/bash -c " \
-        python -m venv /venv \
-        && source /venv/bin/activate \
+        python -m venv /src/venv \
+        && source /src/venv/bin/activate \
         && pip install --upgrade pip \
         && pip install setuptools \
         && pip install -r requirements.txt \
