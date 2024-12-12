@@ -20,7 +20,6 @@ class JobQueue(Dict[str, BaseTaskChain]):
                  chain_task_restrictions: List[str],
                  chain_timeout_seconds: int,
                  queue_check_interval_seconds: int,
-                 max_chain_delay_seconds: int,
                  max_chains: int,
                  reporting_interval_seconds: int,
                  *args, **kwargs):
@@ -38,7 +37,6 @@ class JobQueue(Dict[str, BaseTaskChain]):
         chain_task_restrictions (List[str]): A list of task restrictions for the chains.
         chain_timeout_seconds (int): The timeout in seconds for each chain.
         queue_check_interval_seconds (int): The interval in seconds for checking the queue.
-        max_chain_delay_seconds (int): The maximum delay in seconds for a chain.
         max_running_chains (int): The maximum number of running chains.
         reporting_interval_seconds (int): The interval in seconds for reporting.
 
@@ -62,7 +60,6 @@ class JobQueue(Dict[str, BaseTaskChain]):
         self.chain_task_restrictions = chain_task_restrictions
         self.chain_timeout_seconds = chain_timeout_seconds
         self.queue_check_interval_seconds = queue_check_interval_seconds
-        self.max_chain_delay_seconds = max_chain_delay_seconds
         self.max_chains = max_chains
         self.reporting_interval_seconds = reporting_interval_seconds
 
