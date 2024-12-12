@@ -21,8 +21,7 @@ class JobQueue(Dict[str, BaseTaskChain]):
                  chain_timeout_seconds: int,
                  queue_check_interval_seconds: int,
                  max_chain_delay_seconds: int,
-                 max_running_chains: int,
-                 max_chain_queue_depth: int,
+                 max_chains: int,
                  reporting_interval_seconds: int,
                  *args, **kwargs):
 
@@ -41,7 +40,6 @@ class JobQueue(Dict[str, BaseTaskChain]):
         queue_check_interval_seconds (int): The interval in seconds for checking the queue.
         max_chain_delay_seconds (int): The maximum delay in seconds for a chain.
         max_running_chains (int): The maximum number of running chains.
-        max_chain_queue_depth (int): The maximum depth of the chain queue.
         reporting_interval_seconds (int): The interval in seconds for reporting.
 
         Additional Parameters:
@@ -65,8 +63,7 @@ class JobQueue(Dict[str, BaseTaskChain]):
         self.chain_timeout_seconds = chain_timeout_seconds
         self.queue_check_interval_seconds = queue_check_interval_seconds
         self.max_chain_delay_seconds = max_chain_delay_seconds
-        self.max_running_chains = max_running_chains
-        self.max_chain_queue_depth = max_chain_queue_depth
+        self.max_chains = max_chains
         self.reporting_interval_seconds = reporting_interval_seconds
 
         # Threads
@@ -128,7 +125,7 @@ class JobQueue(Dict[str, BaseTaskChain]):
         Returns a boolean indicating whether the queue is full.
         :return:
         """
-        return len(self.keys()) >= self.max_chain_queue_depth
+        return len(self.keys()) >= self.max_chains
 
     def _thread_reporting(self):
         """
@@ -179,7 +176,7 @@ class JobQueue(Dict[str, BaseTaskChain]):
                 for status_code in TaskStatusCodes
             },
             'duration': self.duration,
-            'max_running_chains': self.max_running_chains,
+            'max_chains': self.max_chains,
             'start_time': self.start_time,
             'status': self.status,
             'stop_time': self.stop_time,
