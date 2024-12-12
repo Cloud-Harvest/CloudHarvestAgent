@@ -9,6 +9,11 @@ agent:
     # Port the agent should bind to
     port: 8500
 
+    # SSL configuration for the agent
+    ssl:
+      certificate: ./app/certs/harvest-self-signed.crt
+      key: ./app/certs/harvest-self-signed.key
+
   logging:
     # Location where logs should be stored
     location: ./app/logs/
@@ -43,28 +48,26 @@ agent:
       #   reason: This agent is not configured to perform TaskChains with the `aws` task.
 
     # Maximum number of seconds a TaskChain can run before being issued the 'terminate' command.
+    # Default is 7200 seconds (2 hours). Long timeouts are necessary because some tasks may take a long time to complete.
+    # An example of this is the AWS KMS task, which requires a long timeout because of how the KMS API requires a
+    # sequential iteration over each key to retrieve metadata (`list_keys` followed by sequential `describe_key` calls).
     chain_timeout_seconds: 7200
 
     # How often the agent checks for new TaskChains in the queue when it has slots available.
-    queue_check_interval_seconds: 5
+    queue_check_interval_seconds: 1
 
-    # The maximum number of seconds a TaskChain can be delayed before being returned to the queue.
-    max_chain_delay_seconds: 300
-
-    # Maximum number of threads a TaskChain can use at one time.
-    max_running_chains: 10
-
-    # Maximum number of TaskChains that can be queued in this agent at any given time.
-    max_chain_queue_depth: 10
+    # Maximum number of TaskChains within the job queue. If the queue is full, the agent will not retrieve new TaskChains
+    # from the global job pool until the queue has space.
+    max_chains: 10
 
   metrics:
     # The interval in seconds at which the agent will report metrics to the API.
-    reporting_interval_seconds: 6
+    reporting_interval_seconds: 1
 
 # Configuration for the API.
 api:
   # Endpoint for the CloudHarvestApi
-  host: api-hostname-here
+  host: 127.0.0.1
 
   # Port for the Api
   port: 8000
