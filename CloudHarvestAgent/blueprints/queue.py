@@ -16,7 +16,9 @@ queue_blueprint = HarvestAgentBlueprint(
 @queue_blueprint.route(rule='inject', methods=['POST'])
 def inject():
     """
-    Accepts a serialized TaskChain, puts it in the JobQueue, and immediately starts it.
+    Accepts a serialized TaskChain, puts it in the JobQueue, and immediately starts it. This operation bypasses the
+    JobQueue's scheduling and limit mechanisms. This is useful when a task chain needs to be executed immediately.
+
     :return: uuid of the instantiated TaskChain
     """
 
