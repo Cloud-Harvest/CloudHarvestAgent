@@ -56,7 +56,11 @@ class CloudHarvestAgent:
 
         # Start the Flask application
         CloudHarvestAgent.flask.run(host=flat_kwargs.get('agent.connection.host', 'localhost'),
-                                    port=flat_kwargs.get('agent.connection.port', 8000))
+                                    port=flat_kwargs.get('agent.connection.port', 8000),
+                                    ssl_context=(
+                                        flat_kwargs.get('agent.connection.ssl.certificate'),
+                                        flat_kwargs.get('agent.connection.ssl.key')
+                                    ))
 
     @staticmethod
     def refresh_silos():
