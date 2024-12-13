@@ -13,7 +13,7 @@ class TestJobQueue(unittest.TestCase):
             chain_timeout_seconds=60,
             queue_check_interval_seconds=5,
             max_chain_delay_seconds=30,
-            max_running_chains=5,
+            max_chains=5,
             max_chain_queue_depth=10,
             reporting_interval_seconds=15
         )

@@ -27,9 +27,9 @@ def terminate(task_id: str) -> Response:
         A Response object containing the result of the operation.
     """
 
-    from ..app import CloudHarvestAgent
+    from ..app import CloudHarvestNode
 
-    task_object = CloudHarvestAgent.job_queue.get(task_id)
+    task_object = CloudHarvestNode.job_queue.get(task_id)
 
     if task_object is None:
         logger.warning(f'Attempt to terminate task {task_id} failed. No task with that name was found.')
@@ -52,9 +52,9 @@ def status(task_id: str) -> Response:
         A Response object containing the status of the TaskChain
     """
 
-    from ..app import CloudHarvestAgent
+    from ..app import CloudHarvestNode
 
-    task_object = CloudHarvestAgent.job_queue.get(task_id)
+    task_object = CloudHarvestNode.job_queue.get(task_id)
 
     if task_object is None:
         return jsonify({'error': 'Task not found.'})

@@ -6,17 +6,18 @@ JobQueue instance, and configuration for the agent. The run method is used to st
 from logging import Logger
 
 
-class CloudHarvestAgent:
+class CloudHarvestNode:
     """
     A static class which contains the Flask application, JobQueue instance, and configuration for the agent.
     """
+    ROLE = 'agent'
+
     from agent import Api, JobQueue
     from flask import Flask
     api: Api = None
     flask: Flask = None
     config = {}
     job_queue: JobQueue = None
-
 
     @staticmethod
     def run(**kwargs):
@@ -37,27 +38,30 @@ class CloudHarvestAgent:
         logger.info('Agent starting')
 
         # Create a new API interface which will be used to communicate with the CloudHarvestApi
-        CloudHarvestAgent.api = CloudHarvestAgent.Api(host=flat_kwargs.get('api.host'),
-                                                      port=flat_kwargs.get('api.port'),
-                                                      token=flat_kwargs.get('api.token'))
+        CloudHarvestNode.api = CloudHarvestNode.Api(host=flat_kwargs.get('api.host'),
+                                                    port=flat_kwargs.get('api.port'),
+                                                    token=flat_kwargs.get('api.token'))
 
         # Retrieves the silo configurations used by the agent and TaskChains
-        CloudHarvestAgent.refresh_silos()
+        CloudHarvestNode.refresh_silos()
+
+        # Start the heartbeat process
+        start_node_heartbeat()
 
         # Instantiate the JobQueue
-        queue = CloudHarvestAgent.JobQueue(api=CloudHarvestAgent.api,
-                                           reporting_interval_seconds=flat_kwargs.get('agent.metrics.reporting_interval_seconds'),
-                                           **{k[12:]: v for k, v in flat_kwargs.items() if k.startswith('agent.tasks.')})
+        queue = CloudHarvestNode.JobQueue(api=CloudHarvestNode.api,
+                                          reporting_interval_seconds=flat_kwargs.get('agent.metrics.reporting_interval_seconds'),
+                                          **{k[12:]: v for k, v in flat_kwargs.items() if k.startswith('agent.tasks.')})
 
-        CloudHarvestAgent.job_queue = queue
-        CloudHarvestAgent.job_queue.start()
+        CloudHarvestNode.job_queue = queue
+        CloudHarvestNode.job_queue.start()
 
         logger.info(f'Agent startup complete. Will serve requests on {flat_kwargs.get("agent.connection.host")}:{flat_kwargs["agent.connection.port"]}.')
 
         # Start the Flask application
-        CloudHarvestAgent.flask.run(host=flat_kwargs.get('agent.connection.host', 'localhost'),
-                                    port=flat_kwargs.get('agent.connection.port', 8000),
-                                    ssl_context=(
+        CloudHarvestNode.flask.run(host=flat_kwargs.get('agent.connection.host', 'localhost'),
+                                   port=flat_kwargs.get('agent.connection.port', 8000),
+                                   ssl_context=(
                                         flat_kwargs.get('agent.connection.ssl.certificate'),
                                         flat_kwargs.get('agent.connection.ssl.key')
                                     ))
@@ -70,7 +74,7 @@ class CloudHarvestAgent:
         """
 
         from CloudHarvestCoreTasks.silos import add_silo
-        silos = CloudHarvestAgent.api.request('get', 'silos/get')['response'] or []
+        silos = CloudHarvestNode.api.request('get', 'silos/get')['response'] or []
 
         # Update the silos to make sure they are up to date
         [
@@ -104,6 +108,92 @@ def flatten_dict_preserve_lists(d, parent_key='', sep='.') -> dict:
 
     return dict(items)
 
+def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: float = 1):
+    """
+    Start the heartbeat process on the harvest-nodes silo. This process will update the node status in the Redis
+    cache at regular intervals.
+
+    Args:
+    expiration_multiplier (int): The multiplier to use when setting the expiration time for the node status in the
+                                 Redis cache, rounded up to the nearest integer.
+    heartbeat_check_rate (float): The rate at which the heartbeat process should check the node status.
+
+    Example:
+        >>> # Start the heartbeat process with a 5x expiration multiplier and a check rate of 1 second. The Agent will be
+        >>> # considered offline if it has not updated its status in 5 seconds.
+        >>> start_node_heartbeat(expiration_multiplier=5, heartbeat_check_rate=1)
+        >>>
+        >>> # Start the heartbeat process with an expiration multiplier of 10 and a check rate of 2 seconds. The Agent will
+        >>> # be considered offline if it has not updated its status in 10 seconds.
+        >>> start_node_heartbeat(expiration_multiplier=10, heartbeat_check_rate=2)
+
+    Returns: The thread object that is running the heartbeat process.
+    """
+
+    import platform
+
+    from CloudHarvestCoreTasks.silos import get_silo
+    from datetime import datetime, timezone
+    from logging import getLogger
+    from socket import getfqdn, gethostbyname
+    from time import sleep
+    from threading import Thread
+
+    logger = getLogger('harvest')
+
+    def _thread():
+        start_datetime = datetime.now(tz=timezone.utc)
+
+        # Get the Redis client
+        silo = get_silo('harvest-nodes')
+        client = silo.connect()     # A StrictRedis instance
+
+        # Get the application metadata
+        import json
+        with open('./meta.json') as meta_file:
+            app_metadata = json.load(meta_file)
+
+            node_name = platform.node()
+            node_role = CloudHarvestNode.ROLE
+
+            node_info = {
+                "architecture": f'{platform.machine()}/{platform.architecture()[0]}',
+                "ip": gethostbyname(getfqdn()),
+                "heartbeat_seconds": heartbeat_check_rate,
+                "name": node_name,
+                "os": platform.freedesktop_os_release(),
+                "plugins": CloudHarvestNode.config.get('plugins', []),
+                "python": platform.python_version(),
+                "role": node_role,
+                "start": start_datetime.isoformat(),
+                "status": CloudHarvestNode.job_queue.detailed_status(),
+                "version": app_metadata.get('version')
+            }
+
+        while True:
+            # Update the last heartbeat time
+            last_datetime = datetime.now(tz=timezone.utc)
+            node_info['last'] = last_datetime.isoformat()
+            node_info['duration'] = (last_datetime - start_datetime).total_seconds()
+
+            # Update the node status in the Redis cache
+            try:
+                client.setex(name=f'{node_role}::{node_name}',
+                             value=json.dumps(node_info, default=str),
+                             time=int(expiration_multiplier * heartbeat_check_rate))
+
+                logger.debug(f'heartbeat: OK')
+
+            except Exception as e:
+                logger.error(f'heartbeat: Could not update silo `harvest-nodes`: {e.args}')
+
+            sleep(heartbeat_check_rate)
+
+    # Start the heartbeat thread
+    thread = Thread(target=_thread, daemon=True)
+    thread.start()
+
+    return thread
 
 #############################################
 # Startup methods                           #

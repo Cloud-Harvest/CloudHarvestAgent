@@ -30,15 +30,15 @@ def shutdown() -> Response:
     Shuts down the agent.
     """
 
-    from app import CloudHarvestAgent
+    from app import CloudHarvestNode
     from .base import safe_request_get_json
 
     request_json = safe_request_get_json(request)
 
     logger.warning('Received shutdown request.')
 
-    result = CloudHarvestAgent.job_queue.stop(finish_running_jobs=request_json.get('finish_running_jobs', True),
-                                              timeout=request_json.get('timeout', 60))
+    result = CloudHarvestNode.job_queue.stop(finish_running_jobs=request_json.get('finish_running_jobs', True),
+                                             timeout=request_json.get('timeout', 60))
 
     if result['result']:
         logger.info('Shutdown request completed.')

@@ -36,9 +36,9 @@ def start() -> Response:
     """
     Starts the job queue.
     """
-    from ..app import CloudHarvestAgent
+    from ..app import CloudHarvestNode
 
-    result = CloudHarvestAgent.job_queue.start()
+    result = CloudHarvestNode.job_queue.start()
 
     return jsonify(result)
 
@@ -48,9 +48,9 @@ def stop() -> Response:
     """
     Stops the job queue.
     """
-    from ..app import CloudHarvestAgent
+    from ..app import CloudHarvestNode
 
-    result = CloudHarvestAgent.job_queue.stop()
+    result = CloudHarvestNode.job_queue.stop()
 
     return jsonify(result)
 
@@ -60,9 +60,9 @@ def status() -> Response:
     """
     Returns a detailed status of the job queue.
     """
-    from ..app import CloudHarvestAgent
+    from ..app import CloudHarvestNode
 
-    return jsonify(CloudHarvestAgent.job_queue.detailed_status())
+    return jsonify(CloudHarvestNode.job_queue.detailed_status())
 
 
 # Escalation of tasks is done at the API level
