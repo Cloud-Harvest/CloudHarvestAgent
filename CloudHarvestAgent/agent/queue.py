@@ -188,13 +188,13 @@ class JobQueue(Dict[str, BaseTaskChain]):
         Returns the duration of the JobQueue in seconds.
         :return:
         """
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         if self.stop_time:
             result = (self.stop_time - self.start_time).total_seconds()
 
         else:
-            result = (datetime.now() - self.start_time).total_seconds()
+            result = (datetime.now(tz=timezone.utc) - self.start_time).total_seconds()
 
         return result
 
