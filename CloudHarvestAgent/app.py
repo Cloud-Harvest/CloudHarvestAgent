@@ -56,9 +56,9 @@ class CloudHarvestNode:
                                           **{k[12:]: v for k, v in flat_kwargs.items() if k.startswith('agent.tasks.')})
 
         CloudHarvestNode.job_queue = queue
-        CloudHarvestNode.job_queue.start()
 
-        logger.info(f'Agent startup complete. Will serve requests on {flat_kwargs.get("agent.connection.host")}:{flat_kwargs["agent.connection.port"]}.')
+        if flat_kwargs.get('agent.tasks.auto_start', True):
+            CloudHarvestNode.job_queue.start()
 
         ssl_context = (flat_kwargs['agent.connection.pem'], ) if flat_kwargs.get('agent.connection.pem') else ()
 
@@ -86,9 +86,11 @@ class CloudHarvestNode:
 
         # Add the silos to make sure they are up to date
         [
-            add_silo(**silo)
-            for silo in silos
+            add_silo(name=silo_name, **silo_config)
+            for silo_name, silo_config in silos['response'].items()
         ]
+
+        return
 
 
 def flatten_dict_preserve_lists(d, parent_key='', sep='.') -> dict:

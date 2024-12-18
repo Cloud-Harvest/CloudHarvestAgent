@@ -40,6 +40,9 @@ agent:
       - 1   # Client
       - 2   # Scheduled
 
+    # Starts the JobQueue immediately upon agent start.
+    auto_start: true
+
     # Frequency in seconds at which the agent reports progress on running TaskChains.
     chain_progress_reporting_interval_seconds: 6
 
