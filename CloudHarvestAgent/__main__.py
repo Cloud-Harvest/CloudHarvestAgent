@@ -15,9 +15,9 @@ def main(**kwargs):
     from flask import Flask
     CloudHarvestNode.flask = Flask('CloudHarvestAgent')
 
-    # Find all plugins and register their objects
-    from CloudHarvestCorePluginManager.functions import register_objects
-    register_objects()
+    # Find all plugins and register their objects and templates
+    from CloudHarvestCorePluginManager import register_all
+    register_all()
 
     # Register the blueprints from this app and all plugins
     from CloudHarvestCorePluginManager.registry import Registry
