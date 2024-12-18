@@ -41,9 +41,9 @@ class JobQueue(Dict[str, BaseTaskChain]):
         reporting_interval_seconds (int): The interval in seconds for reporting.
 
         Additional Parameters:
+        The following are provided but not used to avoid errors when passing the configuration file to the JobQueue.
         *args: Variable length argument list.
         **kwargs: Arbitrary keyword arguments.
-
         """
 
         super().__init__()
