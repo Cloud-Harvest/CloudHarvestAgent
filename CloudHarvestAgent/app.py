@@ -167,7 +167,7 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
             node_role = CloudHarvestNode.ROLE
 
             node_info = {
-                "architecture": f'{platform.machine()}/{platform.architecture()[0]}',
+                "architecture": f'{platform.machine()}',
                 "ip": gethostbyname(getfqdn()),
                 "heartbeat_seconds": heartbeat_check_rate,
                 "name": node_name,
