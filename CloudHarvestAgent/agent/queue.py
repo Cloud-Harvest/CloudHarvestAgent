@@ -46,7 +46,7 @@ class JobQueue(Dict[str, BaseTaskChain]):
 
         """
 
-        super().__init__(*args, **kwargs)
+        super().__init__()
 
         # Api configuration
         self.api = api
