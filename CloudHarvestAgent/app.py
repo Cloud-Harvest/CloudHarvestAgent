@@ -40,7 +40,9 @@ class CloudHarvestNode:
         # Create a new API interface which will be used to communicate with the CloudHarvestApi
         CloudHarvestNode.api = CloudHarvestNode.Api(host=flat_kwargs.get('api.host'),
                                                     port=flat_kwargs.get('api.port'),
-                                                    token=flat_kwargs.get('api.token'))
+                                                    token=flat_kwargs.get('api.token'),
+                                                    pem=flat_kwargs.get('api.ssl.pem'),
+                                                    verify=flat_kwargs.get('api.ssl.verify'))
 
         # Retrieves the silo configurations used by the agent and TaskChains
         CloudHarvestNode.refresh_silos()
@@ -58,13 +60,12 @@ class CloudHarvestNode:
 
         logger.info(f'Agent startup complete. Will serve requests on {flat_kwargs.get("agent.connection.host")}:{flat_kwargs["agent.connection.port"]}.')
 
+        ssl_context = (flat_kwargs['agent.connection.pem'], ) if flat_kwargs.get('agent.connection.pem') else ()
+
         # Start the Flask application
         CloudHarvestNode.flask.run(host=flat_kwargs.get('agent.connection.host', 'localhost'),
                                    port=flat_kwargs.get('agent.connection.port', 8000),
-                                   ssl_context=(
-                                        flat_kwargs.get('agent.connection.ssl.certificate'),
-                                        flat_kwargs.get('agent.connection.ssl.key')
-                                    ))
+                                   ssl_context=ssl_context)
 
     @staticmethod
     def refresh_silos():
@@ -72,11 +73,18 @@ class CloudHarvestNode:
         Creates silo connections for the agent.
         :return:
         """
+        from logging import getLogger
+        logger = getLogger('harvest')
 
         from CloudHarvestCoreTasks.silos import add_silo
-        silos = CloudHarvestNode.api.request('get', 'silos/get')['response'] or []
+        silos = CloudHarvestNode.api.request('get', 'silos/get')
 
-        # Update the silos to make sure they are up to date
+        if silos['status_code'] != 200:
+            from sys import exit
+            logger.critical(f'Could not retrieve silos from the API. {silos["status_code"]}:{silos["reason"]} {silos["url"]}. Exiting.')
+            exit(1)
+
+        # Add the silos to make sure they are up to date
         [
             add_silo(**silo)
             for silo in silos

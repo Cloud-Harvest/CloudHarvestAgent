@@ -1,6 +1,8 @@
 # Description: Configuration file for the CloudHarvestAgent
 
-# Configuration for the Agent
+########################################################################################################################
+# Agent Configuration
+########################################################################################################################
 agent:
   connection:
     # Hostname or IP address the agent should bind to
@@ -10,17 +12,9 @@ agent:
     port: 8500
 
     # SSL configuration for the agent
-    ssl:
-      certificate: ./app/certs/harvest-self-signed.crt
-      key: ./app/certs/harvest-self-signed.key
+    pem: ./app/harvest-self-signed.pem
 
-  heartbeat:
-    # The interval in seconds at which the node will report its status to the harvest-nodes silo.
-    check_rate: 1
-
-    # The maximum number of missed heartbeats before the node is considered offline and is automatically dropped from the harvest-nodes silo.
-    expiration_multiplier: 5
-
+  # Manages log files and logging levels.
   logging:
     # Location where logs should be stored
     location: ./app/logs/
@@ -31,7 +25,12 @@ agent:
     # Suppress console output from the logging engine.
     # quiet: true
 
-  # Configuration for TaskChains and Queue Management
+  # Agent metrics reporting
+  metrics:
+    # The interval in seconds at which the agent will report metrics to the API.
+    reporting_interval_seconds: 1
+
+  # TaskChains and Queue Management
   tasks:
 
     # Set which TaskChains are allowed to run on this agent. By default, all TaskChains are allowed; however, in larger
@@ -67,17 +66,22 @@ agent:
     # from the global job pool until the queue has space.
     max_chains: 10
 
-  metrics:
-    # The interval in seconds at which the agent will report metrics to the API.
-    reporting_interval_seconds: 1
-
-# Configuration for the API.
+########################################################################################################################
+# API Configuration
+########################################################################################################################
 api:
   # Endpoint for the CloudHarvestApi
   host: 127.0.0.1
 
   # Port for the Api
   port: 8000
+
+  # SSL configuration for the api
+  ssl:
+    # Certificate file
+    pem: ./app/harvest-self-signed.pem
+    # Certificate key file. Must be False or the path to the key file.
+    verify: False
 
   # API token for authentication
   # token: api-token-here
