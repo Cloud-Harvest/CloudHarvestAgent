@@ -1,6 +1,6 @@
 from logging import getLogger
 from redis import StrictRedis
-from threading import Thread
+from threading import Event, Thread, Timer
 from typing import Dict, List, Tuple
 from CloudHarvestCoreTasks.tasks import BaseTaskChain, TaskStatusCodes
 
@@ -99,44 +99,55 @@ class JobQueue:
     def _thread_check_queue(self):
         """
         A thread that checks the Redis queue for new tasks and adds them to the JobQueue.
-        :return:
+        :return: None
         """
+
         from CloudHarvestCoreTasks.silos import get_silo
         from time import sleep
 
-        # If there is room in the queue, start adding tasks from the Redis queue
-        while not self.is_queue_full and self.status != TaskStatusCodes.terminating:
-            silo: StrictRedis = get_silo('harvest-task-queue').connect()
-            oldest_task = get_oldest_task_from_queue(silo, self.accepted_chain_priorities)
+        silo = get_silo('harvest-task-queue')
+        client: StrictRedis = silo.connect()
+
+        # If there is room in the JobQueue, and it is running, continue to check the Redis queue
+        while not self.is_queue_full and self.status == JobQueueStatusCodes.running:
+
+            # First cleanup and finished task chains to make room for new ones
+            self.clean_queue()
+
+            # Retrieve the oldest task from the queue
+            oldest_task = get_oldest_task_from_queue(client, self.accepted_chain_priorities)
 
             if oldest_task:
-                """
-                Task format (dict):
-                id (str) a UUID for the task
-                name (str) the name of the task
-                category (str) the category of the task
-                model (dict) a dictionary representing a TaskChain
-                config (dict) a dictionary of configuration parameters provided by the user or application
-                created (datetime) the time the task was created
-                """
+                task_chain_id, task_chain_template = oldest_task
 
-                from json import loads
-                loaded_template = loads(oldest_task[0])
+                try:
+                    # Instantiate and add the task chain to the JobQueue
+                    new_task_chain = self.add_task_chain_from_dict(task_chain_id=task_chain_id,
+                                                                   task_chain_model=task_chain_template)
 
-                logger.info(f'Retrieved task {loaded_template["id"]} ({loaded_template["category"]}-{loaded_template["name"]}) '
-                            f'from the queue.')
+                    # Start the task chain
+                    new_task_chain.start()
 
-                # Create a task chain from the template from the dictionary
-                from CloudHarvestCoreTasks.tasks.factories import task_chain_from_dict
-                from CloudHarvestCoreTasks.tasks.base import BaseTaskChain
-                task_chain: BaseTaskChain = task_chain_from_dict(template=loaded_template['model'], **loaded_template['config'])
+                except Exception as ex:
+                    logger.error(f'Error while adding task chain {task_chain_id} to the JobQueue: {ex.args}')
 
-                # Override the BaseTaskChain's id with the task's id
-                task_chain.id = loaded_template['id']
+                    from datetime import datetime, timezone
+                    from json import dumps
 
-                # Add this task chain to the JobQueue
-                self.add_task_chain(task_chain=task_chain)
+                    now = datetime.now(tz=timezone.utc)
 
+                    tasks_silo_client = get_silo('harvest-tasks').connect()
+                    error_metadata = {
+                        "id": task_chain_id,
+                        "end": now,
+                        "message": f"Error when creating the TaskChain: {ex.args}",
+                        "status": "error",
+                        "updated": now
+                    }
+
+                    tasks_silo_client.setex(name=task_chain_id, value=dumps(error_metadata), time=3600)
+
+            # Sleep for the queue check interval
             sleep(self.queue_check_interval_seconds)
 
     @property
@@ -152,98 +163,108 @@ class JobQueue:
         A thread that reports the progress of the task chains to the API.
         :return:
         """
-        raise NotImplementedError()
+        from datetime import datetime, timezone
+        from json import dumps
+        from time import sleep
 
-        # from json import dumps
-        # from redis import StrictRedis
-        # from time import sleep
-        #
-        # while True:
-        #     reporting_silo = StrictRedis(**self._silos.get('harvest-tasks'))
-        #
-        #     try:
-        #
-        #         for task_chain_id, task_chain in list(self.items()):
-        #             # Report the progress of the task chain to the API
-        #             reporting_silo.set(task_chain_id, dumps(task_chain.detailed_progress()))
-        #
-        #             # Automatically expire the key after 10 reporting intervals
-        #             reporting_silo.expire(task_chain_id, self.reporting_interval_seconds * 10)
-        #
-        #             # Escape the loop if the task chain is complete or terminating
-        #             if self.status in [TaskStatusCodes.complete, TaskStatusCodes.terminating]:
-        #                 break
-        #
-        #     except Exception as e:
-        #         logger.error(f'Error while reporting chain progress: {e.args}')
-        #
-        #     else:
-        #         logger.info('Chain progress reported.')
-        #
-        #     finally:
-        #         sleep(self.reporting_interval_seconds)
+        from CloudHarvestCoreTasks.silos import get_silo
 
-    def _thread_start_initialized_task_chains(self):
-        """
-        A thread that starts task chains that are in the initialized state.
-        :return:
-        """
+        silo = get_silo('harvest-tasks')
+        client = silo.connect()
 
-        raise NotImplementedError()
-        # from threading import Thread
-        # from time import sleep
-        #
-        # while self.status != TaskStatusCodes.terminating:
-        #     # First cleanup any completed tasks, removing them from the queue
-        #     for task_chain_id, task_chain in list(self.items()):
-        #         if task_chain.status in (TaskStatusCodes.complete, TaskStatusCodes.error):
-        #             self.pop(task_chain_id, None)
-        #             thread = self._task_chain_threads.pop(task_chain_id, None)
-        #
-        #             # Attempt to cleanly close the existing thread
-        #             if thread:
-        #                 try:
-        #                     if isinstance(thread, Thread):
-        #                         thread.join(timeout=.15)
-        #
-        #                 except Exception as e:
-        #                     logger.warning(f"{task_chain_id}: Error while joining thread: {e.args}")
-        #
-        #     # Start any initialized task chains
-        #     for task_chain_id, task_chain in list(self.items()):
-        #         # Stop adding tasks if the queue is full
-        #         if self.is_queue_full:
-        #             break
-        #
-        #         # Start the task chain if it is in the initialized state
-        #         if task_chain.status == TaskStatusCodes.initialized:
-        #             self._task_chain_threads[task_chain_id] = Thread(target=task_chain.start, daemon=True)
-        #             self._task_chain_threads[task_chain_id].start()
-        #
-        #     sleep(1)
+        while True:
+            try:
 
-    def add_task_chain(self, task_chain: BaseTaskChain):
+                for task_chain_id, task_chain in list(self.task_chains.items()):
+                    task_chain_metadata = {
+                                    'id': task_chain.id,
+                                    'status': str(task_chain.status),
+                                    'start': task_chain.start,
+                                    'end': task_chain.end,
+                                    'updated': datetime.now(tz=timezone.utc),
+                                } | task_chain.detailed_progress()
+
+                    # Report the progress of the task chain to the API
+                    client.setex(name=task_chain_id, value=dumps(task_chain_metadata), time=3600)
+
+                    # Escape the loop if the task chain is complete or terminating
+                    if self.status in [TaskStatusCodes.complete, TaskStatusCodes.terminating]:
+                        break
+
+            except Exception as e:
+                logger.error(f'Error while reporting chain progress: {e.args}')
+
+            else:
+                logger.info('Chain progress reported.')
+
+            finally:
+                sleep(self.reporting_interval_seconds)
+
+    def add_task_chain(self, task_chain_id: str, task_chain: BaseTaskChain) -> 'JobQueue':
         """
         Adds a TaskChain to the JobQueue and starts it.
+
+        Arguments
+        task_chain_id (str): The ID of the TaskChain to add to the JobQueue.
+        task_chain (BaseTaskChain): The TaskChain to add to the JobQueue.
+
+        Returns
+        self
         """
 
-        # Create a new Process which leverages the JobQueue.manager and executes the task_chain.run() method
-        process = Process(target=task_chain.run, daemon=True)
+        # Determine if the task chain is already in the queue
+        # We use this technique to prevent clobbering an existing task chain with the same ID
+        task_chain = self.task_chains.get(task_chain_id) or task_chain
 
-        # Add the process to the manager
+        if not task_chain:
+            logger.error(f'Task chain with ID {task_chain_id} not found.')
+            return self
 
-    def clear_completed(self) -> 'JobQueue':
+        # Retrieve or create a thread for the task chain
+        thread = self.task_chain_threads.get(task_chain_id) or Thread(target=task_chain.run, daemon=True)
+
+        # Add the task chain to the JobQueue
+        self.task_chain_threads[task_chain_id] = thread
+
+        # We don't need to start a TaskChain that is already running
+        if not task_chain.status == TaskStatusCodes.initialized:
+            thread.start()
+
+        return self
+
+    def add_task_chain_from_dict(self, task_chain_id: str, task_chain_model: dict) -> BaseTaskChain:
+        # Create a task chain from the template from the dictionary
+        from CloudHarvestCoreTasks.tasks.factories import task_chain_from_dict
+        from CloudHarvestCoreTasks.tasks.base import BaseTaskChain
+        task_chain: BaseTaskChain = task_chain_from_dict(template=task_chain_model['model'],
+                                                         **task_chain_model['config'])
+
+        # Override the BaseTaskChain's id with the task's id
+        task_chain.id = task_chain_id
+
+        # Add this task chain to the JobQueue
+        self.add_task_chain(task_chain_id=task_chain_id, task_chain=task_chain)
+
+        return task_chain
+
+    def clean_queue(self) -> 'JobQueue':
         """
-        Removes completed TaskChains from the JobQueue
+        Removes completed and errant TaskChains from the JobQueue
         :return: self
         """
 
+        removed = []
         for task_chain_id, thread in self.task_chain_threads.items():
             # Remove the task chain from the queue if its thread is not alive and its status is complete or error
             if not thread.is_alive() and self.task_chains[task_chain_id].status in (TaskStatusCodes.complete, TaskStatusCodes.error):
                 self.task_chain_threads.pop(task_chain_id, None)
                 self.task_chains.pop(task_chain_id, None)
+                removed.append(task_chain_id)
 
+            if removed:
+                logger.debug(f'Removed {len(removed)} task chains: {removed}')
+
+        return self
 
     def detailed_status(self) -> dict:
         """
@@ -251,24 +272,22 @@ class JobQueue:
         :return:
         """
 
-        raise NotImplementedError()
+        from CloudHarvestCoreTasks.tasks import TaskStatusCodes
 
-        # from CloudHarvestCoreTasks.tasks import TaskStatusCodes
-        #
-        # result = {
-        #     'chain_status': {
-        #         str(status_code): sum(1 for task in self.values() if task.status == status_code)
-        #         for status_code in TaskStatusCodes
-        #     },
-        #     'duration': self.duration,
-        #     'max_chains': self.max_chains,
-        #     'start_time': self.start_time,
-        #     'status': self.status,
-        #     'stop_time': self.stop_time,
-        #     'total_chains_in_queue': len(self)
-        # }
-        #
-        # return result
+        result = {
+            'chain_status': {
+                str(status_code): sum(1 for task in self.task_chains.values() if task.status == status_code)
+                for status_code in TaskStatusCodes
+            },
+            'duration': self.duration,
+            'max_chains': self.max_chains,
+            'start_time': self.start_time,
+            'status': self.status,
+            'stop_time': self.stop_time,
+            'total_chains_in_queue': len(self.task_chain_threads)
+        }
+
+        return result
 
     @property
     def duration(self) -> float:
@@ -285,22 +304,6 @@ class JobQueue:
             result = (datetime.now(tz=timezone.utc) - self.start_time).total_seconds()
 
         return result
-
-    def get_chain_status(self, task_chain_id: str) -> dict:
-        """
-        Retrieves the status of a task chain.
-        :return:
-        """
-
-        raise NotImplementedError()
-        # task_chain: BaseTaskChain = self.get(task_chain_id)
-        #
-        # if task_chain is None:
-        #     raise ValueError(f'Task chain with ID {task_chain_id} not found.')
-        #
-        # return {
-        #     task_chain_id: task_chain.detailed_progress()
-        # }
 
     def start(self) -> dict:
         """
@@ -323,18 +326,16 @@ class JobQueue:
             self._reporting_thread = Thread(target=self._thread_reporting, daemon=True)
             self._check_queue_thread = Thread(target=self._thread_check_queue, daemon=True)
 
-            # Start the manager
-            self.manager.start()
-
         except Exception as ex:
             message = f'Error while starting the JobQueue: {ex.args}'
             logger.error(message)
             self.status = JobQueueStatusCodes.error
 
         else:
-            message = 'JobQueue started successfully.'
+            message = 'OK'
 
         return {
+            'success': self.status == JobQueueStatusCodes.running,
             'result': self.status,
             'message': message
         }
@@ -346,68 +347,108 @@ class JobQueue:
         :param timeout: The timeout in seconds to wait for running jobs to complete.
         :return:
         """
-        raise NotImplementedError()
 
-        # from datetime import datetime, timezone
-        #
-        # logger.warning('Stopping the JobQueue.')
-        # self.status = JobQueueStatusCodes.stopping
-        #
-        # # Prevents the JobQueue from starting new tasks
-        # self._thread_check_queue.join()
-        #
-        # if not finish_running_jobs:
-        #     logger.info('Ordering TaskChains to terminate.')
-        #
-        #     # Notify the threads to stop
-        #     for task_chain_id, task_chain in self.items():
-        #         task_chain.terminate()
-        #
-        # timeout_start_time = datetime.now()
-        #
-        # # Wait for the task chains to complete
-        # from CloudHarvestCoreTasks.tasks import TaskStatusCodes
-        # while (datetime.now() - timeout_start_time).total_seconds() < timeout:
-        #     if all([task_chain.status not in (TaskStatusCodes.initialized, TaskStatusCodes.running) for task_chain in self.values()]):
-        #         logger.info('All task chains have completed.')
-        #         self.status = JobQueueStatusCodes.stopped
-        #         result = True
-        #         break
-        #
-        # else:
-        #     result = False
-        #
-        # # Record the stop time
-        # self.stop_time = datetime.now(tz=timezone.utc)
-        #
-        # return {
-        #     'result': result,
-        #     'message': 'All task chains have completed.' if result else 'Timeout exceeded while waiting for task chains to complete.'
-        # }
+        from datetime import datetime, timezone
 
-def get_oldest_task_from_queue(silo: StrictRedis, accepted_chain_priorities: List[int]) -> Tuple[str, str]:
+        logger.warning('Stopping the JobQueue.')
+        self.status = JobQueueStatusCodes.stopping
+
+        # Prevents the JobQueue from starting new tasks
+        self._thread_check_queue
+
+        if not finish_running_jobs:
+            logger.info('Ordering TaskChains to terminate.')
+
+            # Notify the threads to stop
+            for task_chain_id, task_chain in self.items():
+                task_chain.terminate()
+
+        timeout_start_time = datetime.now()
+
+        # Wait for the task chains to complete
+        from CloudHarvestCoreTasks.tasks import TaskStatusCodes
+        while (datetime.now() - timeout_start_time).total_seconds() < timeout:
+            if all([task_chain.status not in (TaskStatusCodes.initialized, TaskStatusCodes.running) for task_chain in self.values()]):
+                logger.info('All task chains have completed.')
+                self.status = JobQueueStatusCodes.stopped
+                result = True
+                break
+
+        else:
+            result = False
+
+        # Record the stop time
+        self.stop_time = datetime.now(tz=timezone.utc)
+
+        return {
+            'success': result,
+            'result': str(self.status),
+            'message': 'All task chains have completed.' if result else 'Timeout exceeded while waiting for task chains to complete.'
+        }
+
+    def report_task_chain_errors(self, task_chain_id: str, error: str) -> 'JobQueue':
+        from CloudHarvestCoreTasks.silos import get_silo
+        from json import dumps
+        silo = get_silo('harvest-tasks')
+        client = silo.connect()
+
+        dead_task_chain_status = {
+            'id': task_chain_id,
+            'status': f'error: {error}'
+        }
+
+        client.set(task_chain_id, dumps(dead_task_chain_status))
+
+        return self
+
+
+def get_oldest_task_from_queue(silo: StrictRedis,
+                               accepted_chain_priorities: List[int],
+                               max_tasks_to_fetch: int = 100) -> Tuple[str, dict]:
     """
     Retrieves the oldest task from the queue.
-    :param silo: The Redis silo to retrieve the task from.
-    :param accepted_chain_priorities: A list of accepted chain priorities.
-    :return: The oldest task from the Redis database as a tuple of task_id and task.
+
+    Arguments
+    ---------
+    silo (StrictRedis): The Redis silo to retrieve the task from.
+    accepted_chain_priorities (List[int]): A list of accepted chain priorities.
+    max_tasks_to_fetch (int, optional): The maximum number of tasks to fetch from the queue.
+
+    Returns
+    -------
+    Tuple[str, dict] or None: The oldest task from the Redis database as a tuple of task_id and task.
+    (
+        task_id (str): The ID of the task.
+        task (dict): The task as a dictionary.
+            {
+                id (str) a UUID for the task
+                name (str) the name of the task
+                category (str) the category of the task
+                model (dict) a dictionary representing a TaskChain
+                config (dict) a dictionary of configuration parameters provided by the user or application
+                created (datetime) the time the task was created
+            }
+    )
     """
 
     # harvest-task-queue format:
-    #   name: {priority}:{task_chain_id}
+    #   name: {priority}::{task_chain_id}
     #   value: {task_chain_json_payload}
 
     for priority in accepted_chain_priorities:
         # Retrieve the first 100 tasks from the queue where the priority matches
-        redis_names = silo.scan_iter(match=f'{priority}:*', count=100)
+        redis_names = silo.scan_iter(match=f'{priority}::*', count=max_tasks_to_fetch)
 
         for redis_name in redis_names:
             # Try to pop the first task from the queue
-            task_id = redis_name.split(':')[1]
+            task_chain_id = redis_name.split('::')[1]
             task = silo.lpop(redis_name)
 
             if task:
-                return task_id, task
+                from json import loads
+                logger.debug(f'Retrieved task `{redis_name}` from the queue.')
+
+                return task_chain_id, loads(task)
 
 
 class JobQueueStatusCodes:

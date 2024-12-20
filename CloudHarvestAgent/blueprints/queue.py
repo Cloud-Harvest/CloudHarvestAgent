@@ -23,11 +23,6 @@ def inject():
     """
 
     # TODO: Implement this method
-
-    # from ..app import CloudHarvestAgent
-    #
-    # incoming_request = request.get_json()
-
     return not_implemented_error()
 
 
@@ -62,10 +57,10 @@ def status() -> Response:
     """
     from ..app import CloudHarvestNode
 
-    return jsonify(CloudHarvestNode.job_queue.detailed_status())
+    result = CloudHarvestNode.job_queue.detailed_status()
 
-
-# Escalation of tasks is done at the API level
-# @queue_blueprint.route(rule='escalate/<task_chain_id>', methods=['GET'])
-# def escalate(task_chain_id: str) -> Response:
-#     pass
+    return jsonify({
+        'success': bool(result),
+        'message': 'OK' if result else 'No status available',
+        'result': result
+    })
