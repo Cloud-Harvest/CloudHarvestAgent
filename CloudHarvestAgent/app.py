@@ -174,6 +174,7 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
                 "os": platform.freedesktop_os_release(),
                 "plugins": CloudHarvestNode.config.get('plugins', []),
                 "python": platform.python_version(),
+                "queue": CloudHarvestNode.job_queue.detailed_status(),
                 "role": node_role,
                 "start": start_datetime.isoformat(),
                 "status": CloudHarvestNode.job_queue.detailed_status(),
