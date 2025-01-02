@@ -215,9 +215,14 @@ def load_configuration_from_file() -> dict:
 
     configuration = {}
 
+    from os.path import abspath, expanduser, exists
+    config_paths = (
+        abspath(expanduser('./app/harvest.yaml')),
+        abspath(expanduser('./harvest.yaml')),
+    )
+
     # Select the first file of the list
-    for filename in ('./app/harvest.yaml', './harvest.yaml'):
-        from os.path import exists
+    for filename in config_paths:
 
         if exists(filename):
             with open(filename) as agent_file:
@@ -225,10 +230,13 @@ def load_configuration_from_file() -> dict:
 
             break
 
+    if not configuration:
+        raise FileNotFoundError(f'No configuration file found in {config_paths}.')
+
     # Remove any keys that start with a period. This allows YAML anchors to be used in the configuration file.
     return {
         k:v
-        for k, v in configuration.items() or {}
+        for k, v in configuration.items() or {}.items()
         if not k.startswith('.')
     }
 
