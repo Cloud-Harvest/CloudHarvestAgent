@@ -77,7 +77,7 @@ class CloudHarvestNode:
         logger = getLogger('harvest')
 
         from CloudHarvestCoreTasks.silos import add_silo
-        silos = CloudHarvestNode.api.request('get', 'silos/get')
+        silos = CloudHarvestNode.api.request('get', 'silos/get_all')
 
         if silos['status_code'] != 200:
             from sys import exit
@@ -87,7 +87,7 @@ class CloudHarvestNode:
         # Add the silos to make sure they are up to date
         [
             add_silo(name=silo_name, **silo_config)
-            for silo_name, silo_config in silos['response'].items()
+            for silo_name, silo_config in silos['response']['result'].items()
         ]
 
         return
