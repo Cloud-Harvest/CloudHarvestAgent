@@ -121,12 +121,8 @@ class JobQueue:
                 task_chain_id, task_chain_template = oldest_task
 
                 try:
-                    # Instantiate and add the task chain to the JobQueue
-                    new_task_chain = self.add_task_chain_from_dict(task_chain_id=task_chain_id,
-                                                                   task_chain_model=task_chain_template)
-
-                    # Start the task chain
-                    new_task_chain.start()
+                    # Instantiate the task chain from the template, add it to the job queue, and start it
+                    self.add_task_chain_from_dict(task_chain_id=task_chain_id, task_chain_model=task_chain_template)
 
                 except Exception as ex:
                     logger.error(f'Error while adding task chain {task_chain_id} to the JobQueue: {ex.args}')
@@ -145,7 +141,7 @@ class JobQueue:
                         "updated": now
                     }
 
-                    tasks_silo_client.setex(name=task_chain_id, value=dumps(error_metadata), time=3600)
+                    tasks_silo_client.setex(name=task_chain_id, value=dumps(error_metadata, default=str), time=3600)
 
             # Sleep for the queue check interval
             sleep(self.queue_check_interval_seconds)
@@ -195,7 +191,7 @@ class JobQueue:
                 logger.error(f'Error while reporting chain progress: {e.args}')
 
             else:
-                logger.info('Chain progress reported.')
+                logger.debug('progress: OK')
 
             finally:
                 sleep(self.reporting_interval_seconds)
@@ -214,10 +210,10 @@ class JobQueue:
 
         # Determine if the task chain is already in the queue
         # We use this technique to prevent clobbering an existing task chain with the same ID
-        task_chain = self.task_chains.get(task_chain_id) or task_chain
+        existing_task_chain = self.task_chains.get(task_chain_id) or task_chain
 
-        if not task_chain:
-            logger.error(f'Task chain with ID {task_chain_id} not found.')
+        if existing_task_chain:
+            logger.warning(f'Task chain with ID {task_chain_id} already exists. Skipping.')
             return self
 
         # Retrieve or create a thread for the task chain
@@ -226,9 +222,10 @@ class JobQueue:
         # Add the task chain to the JobQueue
         self.task_chain_threads[task_chain_id] = thread
 
-        # We don't need to start a TaskChain that is already running
-        if not task_chain.status == TaskStatusCodes.initialized:
-            thread.start()
+        # Start the task chain
+        thread.start()
+
+        logger.debug(f'Added {task_chain_id} to the JobQueue.')
 
         return self
 
@@ -255,14 +252,24 @@ class JobQueue:
 
         removed = []
         for task_chain_id, thread in self.task_chain_threads.items():
+            task_chain = self.task_chains.get(task_chain_id)
+
+            if not task_chain:
+                removed.append(task_chain_id)
+                continue
+
             # Remove the task chain from the queue if its thread is not alive and its status is complete or error
             if not thread.is_alive() and self.task_chains[task_chain_id].status in (TaskStatusCodes.complete, TaskStatusCodes.error):
                 self.task_chain_threads.pop(task_chain_id, None)
                 self.task_chains.pop(task_chain_id, None)
                 removed.append(task_chain_id)
 
-            if removed:
-                logger.debug(f'Removed {len(removed)} task chains: {removed}')
+        if removed:
+            for task_chain_reference in (self.task_chains, self.task_chain_threads):
+                for task_chain_id in removed:
+                    task_chain_reference.pop(task_chain_id, None)
+
+            logger.debug(f'Removed {len(removed)} task chains: {removed}')
 
         return self
 
@@ -325,6 +332,9 @@ class JobQueue:
             from threading import Thread
             self._reporting_thread = Thread(target=self._thread_reporting, daemon=True)
             self._check_queue_thread = Thread(target=self._thread_check_queue, daemon=True)
+
+            self._reporting_thread.start()
+            self._check_queue_thread.start()
 
         except Exception as ex:
             message = f'Error while starting the JobQueue: {ex.args}'
@@ -402,9 +412,8 @@ class JobQueue:
         return self
 
 
-def get_oldest_task_from_queue(silo: StrictRedis,
-                               accepted_chain_priorities: List[int],
-                               max_tasks_to_fetch: int = 100) -> Tuple[str, dict]:
+def get_oldest_task_from_queue(client: StrictRedis,
+                               accepted_chain_priorities: List[int]) -> Tuple[str, dict]:
     """
     Retrieves the oldest task from the queue.
 
@@ -412,7 +421,6 @@ def get_oldest_task_from_queue(silo: StrictRedis,
     ---------
     silo (StrictRedis): The Redis silo to retrieve the task from.
     accepted_chain_priorities (List[int]): A list of accepted chain priorities.
-    max_tasks_to_fetch (int, optional): The maximum number of tasks to fetch from the queue.
 
     Returns
     -------
@@ -431,25 +439,38 @@ def get_oldest_task_from_queue(silo: StrictRedis,
     )
     """
 
-    # harvest-task-queue format:
-    #   name: {priority}::{task_chain_id}
-    #   value: {task_chain_json_payload}
-
     for priority in accepted_chain_priorities:
-        # Retrieve the first 100 tasks from the queue where the priority matches
-        redis_names = silo.scan_iter(match=f'{priority}::*', count=max_tasks_to_fetch)
+        queue_name = f'queue::{priority}'
 
-        for redis_name in redis_names:
-            # Try to pop the first task from the queue
-            task_chain_id = redis_name.split('::')[1]
-            task = silo.lpop(redis_name)
+        while True:
+            # Check if this task queue is empty
+            if client.llen(queue_name) == 0:
+                # logger.debug(f'No priority {priority} tasks in the queue.')
+                break
 
-            if task:
-                from json import loads
-                logger.debug(f'Retrieved task `{redis_name}` from the queue.')
+            task_queue_name = client.rpop(name=queue_name)
 
-                return task_chain_id, loads(task)
+            if task_queue_name:
+                # Get the task itself
+                task = client.get(name=task_queue_name)
 
+                # Remove the task from the queue so that it is not processed again
+                client.delete(task_queue_name)
+
+                if task:
+                    from json import loads
+                    logger.debug(f'Retrieved task `{task_queue_name}` from the queue.')
+
+                    task_config = loads(task)
+
+                    # Returns the first valid task from the queue, breaking the valid task and priority queue loops
+                    return task_config['id'], task_config
+
+                else:
+                    # No task for this task id.
+                    # This happens when a task expires. We skip it at that point and move on to the next
+                    # task in the queue.
+                    continue
 
 class JobQueueStatusCodes:
     complete = 'complete'
