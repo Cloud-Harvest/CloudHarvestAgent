@@ -75,27 +75,6 @@ class JobQueue:
         self.status = TaskStatusCodes.initialized
         self.stop_time = None
 
-    def _on_chain_complete(self, task_chain_id: str):
-        """
-        A callback that is called when a task chain completes. It sends the chain's final results to the harvest-agent-results
-        silo, then removes the task chain from the JobQueue.
-        :return:
-        """
-
-        raise NotImplementedError()
-        #
-        # from CloudHarvestCoreTasks.silos import get_silo
-        # # Update the harvest-tasks silo with the task chain status
-        # harvest_tasks_silo = get_silo('harvest-tasks')
-        #
-        # # Send the final results to the harvest-task-results silo
-        # harvest_task_results_silo = get_silo('harvest-task-results')
-        #
-        #
-        #
-        # # Remove the task chain from the JobQueue
-        # self.pop(task_chain_id, None)
-
     def _thread_check_queue(self):
         """
         A thread that checks the Redis queue for new tasks and adds them to the JobQueue.
@@ -239,6 +218,9 @@ class JobQueue:
         # Override the BaseTaskChain's id with the task's id
         task_chain.id = task_chain_id
 
+        # Set the TaskChain's result silo
+        task_chain.results_silo = 'harvest-task-results'
+
         # Add this task chain to the JobQueue
         self.add_task_chain(task_chain_id=task_chain_id, task_chain=task_chain)
 
@@ -363,14 +345,11 @@ class JobQueue:
         logger.warning('Stopping the JobQueue.')
         self.status = JobQueueStatusCodes.stopping
 
-        # Prevents the JobQueue from starting new tasks
-        self._thread_check_queue
-
         if not finish_running_jobs:
             logger.info('Ordering TaskChains to terminate.')
 
             # Notify the threads to stop
-            for task_chain_id, task_chain in self.items():
+            for task_chain_id, task_chain in self.task_chains.items():
                 task_chain.terminate()
 
         timeout_start_time = datetime.now()
@@ -378,7 +357,7 @@ class JobQueue:
         # Wait for the task chains to complete
         from CloudHarvestCoreTasks.tasks import TaskStatusCodes
         while (datetime.now() - timeout_start_time).total_seconds() < timeout:
-            if all([task_chain.status not in (TaskStatusCodes.initialized, TaskStatusCodes.running) for task_chain in self.values()]):
+            if all([task_chain.status not in (TaskStatusCodes.initialized, TaskStatusCodes.running) for task_chain in self.task_chains.values()]):
                 logger.info('All task chains have completed.')
                 self.status = JobQueueStatusCodes.stopped
                 result = True
