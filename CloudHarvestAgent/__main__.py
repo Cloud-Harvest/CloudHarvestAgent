@@ -36,4 +36,13 @@ def main(**kwargs):
 
 if __name__ == '__main__':
     from app import load_configuration_from_file
-    main(**load_configuration_from_file())
+    try:
+        main(**load_configuration_from_file())
+
+    except Exception as ex:
+        print(f'Error: {str(ex)}')
+        exit(1)
+
+    else:
+        print('Exiting')
+        exit(0)
