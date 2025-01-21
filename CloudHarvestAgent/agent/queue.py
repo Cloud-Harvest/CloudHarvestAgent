@@ -266,7 +266,7 @@ class JobQueue:
         result = {
             'chain_status': {
                 str(status_code): sum(1 for task in self.task_chains.values() if task.status == status_code)
-                for status_code in TaskStatusCodes
+                for status_code in TaskStatusCodes.get_codes()
             },
             'duration': self.duration,
             'max_chains': self.max_chains,
