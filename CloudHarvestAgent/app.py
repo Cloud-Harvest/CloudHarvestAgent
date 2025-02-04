@@ -173,6 +173,7 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
                 "name": node_name,
                 "os": platform.freedesktop_os_release(),
                 "plugins": CloudHarvestNode.config.get('plugins', []),
+                "port": CloudHarvestNode.config.get('agent', {}).get('connection', {}).get('port') or 8000,
                 "python": platform.python_version(),
                 "queue": CloudHarvestNode.job_queue.detailed_status(),
                 "role": node_role,
@@ -189,7 +190,9 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
 
             # Update the node status in the Redis cache
             try:
-                client.setex(name=f'{node_role}::{node_name}',
+                node_record_identifier = f'{node_role}::{node_name}::{node_info["port"]}'
+
+                client.setex(name=node_record_identifier,
                              value=json.dumps(node_info, default=str),
                              time=int(expiration_multiplier * heartbeat_check_rate))
 
