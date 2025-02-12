@@ -171,7 +171,7 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
                 "ip": gethostbyname(getfqdn()),
                 "heartbeat_seconds": heartbeat_check_rate,
                 "name": node_name,
-                "os": platform.freedesktop_os_release(),
+                "os": platform.freedesktop_os_release().get('PRETTY_NAME'),
                 "plugins": CloudHarvestNode.config.get('plugins', []),
                 "port": CloudHarvestNode.config.get('agent', {}).get('connection', {}).get('port') or 8000,
                 "python": platform.python_version(),
