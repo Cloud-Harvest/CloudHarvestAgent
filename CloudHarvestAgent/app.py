@@ -161,19 +161,20 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
         # Get the application metadata
         import json
         with open('./meta.json') as meta_file:
-            from CloudHarvestCorePluginManager import Registry
             app_metadata = json.load(meta_file)
 
+        from CloudHarvestCorePluginManager import Registry
         node_name = platform.node()
         node_role = CloudHarvestNode.ROLE
 
         node_info = {
             "architecture": f'{platform.machine()}',
-            "available_tasks": Registry.find(category='task', result_key='name'),
+            "available_chains": sorted(Registry.find(category='chain', result_key='name', limit=None)),
+            "available_tasks": sorted(Registry.find(category='task', result_key='name', limit=None)),
             "ip": gethostbyname(getfqdn()),
             "heartbeat_seconds": heartbeat_check_rate,
             "name": node_name,
-            "os": platform.freedesktop_os_release(),
+            "os": platform.freedesktop_os_release().get('PRETTY_NAME'),
             "plugins": CloudHarvestNode.config.get('plugins', []),
             "port": CloudHarvestNode.config.get('agent', {}).get('connection', {}).get('port') or 8000,
             "python": platform.python_version(),
@@ -183,6 +184,11 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
             "status": CloudHarvestNode.job_queue.detailed_status(),
             "version": app_metadata.get('version')
         }
+
+        node_info.update({
+            f'pstar.{k}': v
+            for k, v in CloudHarvestNode.config.get('agent', {}).get('pstar', {}).items()
+        })
 
         while True:
             # Update the last heartbeat time
