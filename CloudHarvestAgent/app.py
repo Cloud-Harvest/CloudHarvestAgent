@@ -161,26 +161,28 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
         # Get the application metadata
         import json
         with open('./meta.json') as meta_file:
+            from CloudHarvestCorePluginManager import Registry
             app_metadata = json.load(meta_file)
 
-            node_name = platform.node()
-            node_role = CloudHarvestNode.ROLE
+        node_name = platform.node()
+        node_role = CloudHarvestNode.ROLE
 
-            node_info = {
-                "architecture": f'{platform.machine()}',
-                "ip": gethostbyname(getfqdn()),
-                "heartbeat_seconds": heartbeat_check_rate,
-                "name": node_name,
-                "os": platform.freedesktop_os_release().get('PRETTY_NAME'),
-                "plugins": CloudHarvestNode.config.get('plugins', []),
-                "port": CloudHarvestNode.config.get('agent', {}).get('connection', {}).get('port') or 8000,
-                "python": platform.python_version(),
-                "queue": CloudHarvestNode.job_queue.detailed_status(),
-                "role": node_role,
-                "start": start_datetime.isoformat(),
-                "status": CloudHarvestNode.job_queue.detailed_status(),
-                "version": app_metadata.get('version')
-            }
+        node_info = {
+            "architecture": f'{platform.machine()}',
+            "available_tasks": Registry.find(category='task', result_key='name'),
+            "ip": gethostbyname(getfqdn()),
+            "heartbeat_seconds": heartbeat_check_rate,
+            "name": node_name,
+            "os": platform.freedesktop_os_release(),
+            "plugins": CloudHarvestNode.config.get('plugins', []),
+            "port": CloudHarvestNode.config.get('agent', {}).get('connection', {}).get('port') or 8000,
+            "python": platform.python_version(),
+            "queue": CloudHarvestNode.job_queue.detailed_status(),
+            "role": node_role,
+            "start": start_datetime.isoformat(),
+            "status": CloudHarvestNode.job_queue.detailed_status(),
+            "version": app_metadata.get('version')
+        }
 
         while True:
             # Update the last heartbeat time
@@ -235,6 +237,17 @@ def load_configuration_from_file() -> dict:
 
     if not configuration:
         raise FileNotFoundError(f'No configuration file found in {config_paths}.')
+
+    # Ensure the configuration contains a PSTAR which is critical for the agent to function
+    pstar = configuration.get('agent', {}).get('pstar', {}) or {
+            'platform': '*',
+            'service': '*',
+            'type': '*',
+            'account': '*',
+            'region': '*'
+        }
+
+    configuration['agent'].update(pstar=pstar)
 
     # Remove any keys that start with a period. This allows YAML anchors to be used in the configuration file.
     return {
