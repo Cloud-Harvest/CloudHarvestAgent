@@ -210,8 +210,8 @@ class JobQueue:
 
     def add_task_chain_from_dict(self, task_chain_id: str, task_chain_model: dict) -> BaseTaskChain:
         # Create a task chain from the template from the dictionary
-        from CloudHarvestCoreTasks.tasks.factories import task_chain_from_dict
-        from CloudHarvestCoreTasks.tasks.base import BaseTaskChain
+        from CloudHarvestCoreTasks.factories import task_chain_from_dict
+        from CloudHarvestCoreTasks.base import BaseTaskChain
         task_chain: BaseTaskChain = task_chain_from_dict(template=task_chain_model['model'],
                                                          **task_chain_model['config'])
 

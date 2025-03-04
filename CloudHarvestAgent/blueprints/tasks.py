@@ -27,7 +27,7 @@ def terminate(task_id: str) -> Response:
         A Response object containing the result of the operation.
     """
 
-    from ..app import CloudHarvestNode
+    from CloudHarvestAgent.app import CloudHarvestNode
 
     task_object = CloudHarvestNode.job_queue.get(task_id)
 
@@ -52,7 +52,7 @@ def status(task_id: str) -> Response:
         A Response object containing the status of the TaskChain
     """
 
-    from ..app import CloudHarvestNode
+    from CloudHarvestAgent.app import CloudHarvestNode
 
     task_object = CloudHarvestNode.job_queue.get(task_id)
 

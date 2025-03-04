@@ -5,7 +5,7 @@ The agent blueprint is responsible for managing the Flask agent.s
 from CloudHarvestCoreTasks.blueprints import HarvestAgentBlueprint
 from flask import Response, jsonify, request
 from logging import getLogger
-from .home import not_implemented_error
+from CloudHarvestAgent.blueprints.home import not_implemented_error
 
 logger = getLogger('harvest')
 
