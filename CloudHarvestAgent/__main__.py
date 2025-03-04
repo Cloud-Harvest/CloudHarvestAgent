@@ -6,7 +6,7 @@ from __register__ import *
 
 
 def main(**kwargs):
-    from app import CloudHarvestNode
+    from CloudHarvestAgent.app import CloudHarvestNode
 
     # Raw configuration for the agent
     CloudHarvestNode.config = kwargs
@@ -35,7 +35,7 @@ def main(**kwargs):
     print('Agent stopped')
 
 if __name__ == '__main__':
-    from app import load_configuration_from_file
+    from CloudHarvestAgent.app import load_configuration_from_file
     try:
         main(**load_configuration_from_file())
 

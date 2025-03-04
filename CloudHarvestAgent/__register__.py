@@ -5,4 +5,4 @@ Package imports for CloudHarvestAgent
 #############################################
 # CloudHarvestCorePluginManager imports
 #############################################
-from blueprints import *
+from CloudHarvestAgent.blueprints import *
