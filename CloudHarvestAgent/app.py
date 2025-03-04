@@ -12,7 +12,8 @@ class CloudHarvestNode:
     """
     ROLE = 'agent'
 
-    from agent import Api, JobQueue
+    from CloudHarvestAgent.api import Api
+    from CloudHarvestAgent.jobs import JobQueue
     from flask import Flask
     api: Api = None
     flask: Flask = None

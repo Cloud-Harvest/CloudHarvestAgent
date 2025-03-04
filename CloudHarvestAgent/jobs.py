@@ -12,7 +12,7 @@ class JobQueue:
     The JobQueue class is responsible for checking the Redis queue for new tasks and adding them to the queue. It also
     reports the status of any running task chains to the harvest-agents silo.
     """
-    from .api import Api
+    from CloudHarvestAgent.api import Api
 
     def __init__(self,
                  api: Api,
