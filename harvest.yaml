@@ -1,0 +1,103 @@
+# Description: Configuration file for the CloudHarvestAgent
+
+########################################################################################################################
+# Agent Configuration
+########################################################################################################################
+agent:
+  connection:
+    # Hostname or IP address the agent should bind to
+    host: 127.0.0.1
+
+    # Port the agent should bind to
+    port: 8500
+
+    # SSL configuration for the agent
+    pem: ./app/harvest-self-signed.pem
+
+  # Manages log files and logging levels.
+  logging:
+    # Location where logs should be stored
+    location: ./app/logs/
+
+    # Logging level for the agent. Values are DEBUG, INFO, WARNING, ERROR, CRITICAL
+    level: DEBUG
+
+    # Suppress console output from the logging engine.
+    # quiet: true
+
+  # Agent metrics reporting
+  metrics:
+    # The interval in seconds at which the agent will report metrics to the API.
+    reporting_interval_seconds: 1
+
+  # PSTAR - Platform, Service, Type, Account, Region
+  # Determines the PSTAR this agent is associated with. This is used to determine which TaskChains are allowed to
+  # run on this agent. By default, all TaskChains are allowed to run on an agent; however, in larger deployments, you
+  # may want to restrict the TaskChains that can run on a given agent, providing dedicated or isolated agents.
+  pstar:
+    # Each key's value is a regex expression. If TaskChain contains a PSTAR and the expression matches, it will be
+    # allowed to run on this agent.
+#    platform: '*'
+#    service: '*'
+#    type: '*'
+#    account: '*'
+#    region: '*'
+
+  # TaskChains and Queue Management
+  tasks:
+
+    # Set which TaskChains are allowed to run on this agent. By default, all TaskChains are allowed; however, in larger
+    # deployments, you may want to restrict the TaskChains that can run on a given agent, providing dedicated agents.
+    accepted_chain_priorities:
+      - 0   # Escalated
+      - 1   # Client
+      - 2   # Scheduled
+
+    # Starts the JobQueue immediately upon agent start.
+    auto_start: true
+
+    # Frequency in seconds at which the agent reports progress on running TaskChains.
+    chain_progress_reporting_interval_seconds: 6
+
+    # Prevent certain TaskChains from running on this agent by specifying the Chain's registered task name. By default,
+    # all Tasks and TaskChains are allowed to run on an agent. Selective agent configuration is useful in larger
+    # deployments where multiple agents run in different environments which should be otherwise isolated. By limiting
+    # what task can be run by the agent, you can ensure that the agent only runs TaskChains that are compatible with
+    # its environment. For instance, an agent running in AWS may not also have access to Azure, so you could restrict
+    # the agent from running TaskChains with the `azure` task.
+    chain_task_restrictions:
+      # - task_name: aws
+      #   reason: This agent is not configured to perform TaskChains with the `aws` task.
+
+    # Maximum number of seconds a TaskChain can run before being issued the 'terminate' command.
+    # Default is 7200 seconds (2 hours). Long timeouts are necessary because some tasks may take a long time to complete.
+    # An example of this is the AWS KMS task, which requires a long timeout because of how the KMS API requires a
+    # sequential iteration over each key to retrieve metadata (`list_keys` followed by sequential `describe_key` calls).
+    chain_timeout_seconds: 7200
+
+    # How often the agent checks for new TaskChains in the queue when it has slots available.
+    queue_check_interval_seconds: 1
+
+    # Maximum number of TaskChains within the job queue. If the queue is full, the agent will not retrieve new TaskChains
+    # from the global job pool until the queue has space.
+    max_chains: 10
+
+########################################################################################################################
+# API Configuration
+########################################################################################################################
+api:
+  # Endpoint for the CloudHarvestApi
+  host: 127.0.0.1
+
+  # Port for the Api
+  port: 8000
+
+  # SSL configuration for the api
+  ssl:
+    # Certificate file
+    pem: ./app/harvest-self-signed.pem
+    # Certificate key file. Must be False or the path to the key file.
+    verify: False
+
+  # API token for authentication
+  # token: api-token-here
