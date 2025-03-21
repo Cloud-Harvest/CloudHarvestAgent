@@ -1,0 +1,111 @@
+report:
+  description: Displays the data collection jobs and their status.
+  headers:
+    - Id
+    - Stage
+    - Name
+    - Description
+    - Status
+    - Records
+    - Duration
+    - Start
+    - End
+
+  tasks:
+    # Data retrieval tasks
+    - redis:
+        name: Get Enqueued tasks
+        description: Displays the status of the tasks that are currently awaiting processing.
+        result_as: harvest_task_queue
+        silo: harvest-task-queue
+        command: get
+        arguments:
+          patterns: "task::*"
+        serialization: true
+
+    - redis:
+        name: Get Active tasks
+        description: Displays the status of the tasks that are currently being processed.
+        result_as: harvest_tasks
+        silo: harvest-tasks
+        command: get
+        arguments:
+          patterns: "task::*"
+        serialization: true
+
+    - redis:
+        name: Get Completed tasks
+        description: Displays the status of the tasks that have been completed.
+        result_as: harvest_task_results
+        silo: harvest-task-results
+        command: get
+        arguments:
+          patterns: "*"
+          keys: "meta"
+        serialization: true
+
+    # Data formatting tasks
+    - dataset:
+        name: Modify enqueued task data
+        description: Formats the data from the enqueued tasks.
+        data: var.harvest_task_queue
+        result_as: harvest_task_queue
+        stages:
+          - add_keys:
+              keys: Stage
+              default_value:  enqueued
+          - splice_key:
+              source_key: _id
+              start: 6        # 'task::' is 6 characters long
+
+    - dataset:
+        name: Modify processing task data
+        description: Formats the data from the processing tasks.
+        data: var.harvest_tasks
+        result_as: harvest_tasks
+        stages:
+          - add_keys:
+              keys: Stage
+              default_value:  processing
+          - splice_key:
+              source_key: _id
+              start: 6
+          - unnest_records:
+              key_pattern: "meta.*"
+              nest_level: 1
+
+    - dataset:
+        name: Modify completed task data
+        description: Formats the data from the completed tasks.
+        data: var.harvest_task_results
+        result_as: harvest_task_results
+        stages:
+          - add_keys:
+              keys: Stage
+              default_value:  completed
+          - unwind:
+              source_key: meta
+          - unnest_records:
+              key_pattern: "meta.*"
+              nest_level: 1
+          - match_and_remove:
+              matching_expressions:
+                - 'Position==Total'
+
+    - dataset:
+        name: Consolidate data
+        description: Combines the data from the enqueued, active, and completed tasks.
+        filters: '.*'
+        result_as: harvest_jobs
+        stages:
+          - add_records:
+              records:
+                - var.harvest_task_queue
+                - var.harvest_tasks
+                - var.harvest_task_results
+          - rename_keys:
+              mapping:
+                _id: Id
+          - title_keys:
+              remove_characters:
+                - "_"

@@ -1,0 +1,56 @@
+report:
+  description: Generates a list of all Agents
+  headers:
+    - Platform
+    - Service
+    - Type
+    - Account
+    - Region
+    - Name
+    - Ip
+    - Port
+    - Version
+    - Os
+    - Python
+    - Duration
+    - AvailableChains
+    - AvailableTasks
+    - AvailableTemplates
+    - Start
+    - Last
+
+  tasks:
+    - redis:
+        name: Retrieve information on Agents
+        result_as: harvest_nodes
+        silo: harvest-nodes
+        command: get
+        arguments:
+          patterns: "agent*"
+        serialization: true
+
+    - dataset:
+        name: Format the data
+        data: var.harvest_nodes
+        filters: '.*'
+        stages:
+          - convert_list_to_string:
+                source_key: available_chains
+
+          - convert_list_to_string:
+              source_key: available_tasks
+
+          - convert_list_to_string:
+              source_key: available_templates
+
+          - rename_keys:  # Rename the PSTAR keys to match the headers
+              mapping:
+                "pstar_platform": "platform"
+                "pstar_service": "service"
+                "pstar_type": "type"
+                "pstar_account": "account"
+                "pstar_region": "region"
+
+          - title_keys:
+              remove_characters:
+                - "_"

@@ -1,0 +1,34 @@
+report:
+  description: |
+    This report returns information from the `meta` collection where all objects across all platforms is stored. The meta
+    collection is used to find an object based on its platform, collection, collection id.
+  headers:
+    - Active
+    - Platform
+    - Service
+    - Type
+    - Account
+    - Region
+    - Collection
+    - CollectionId
+    - LastSeen
+
+  tasks:
+    - mongo:
+        name: get meta collection
+        result_as: result
+        collection: meta
+        filters: '*'
+
+        pipeline:
+          - $project:
+              Active: "$Harvest.Active"
+              Platform: "$Harvest.Platform"
+              Service: "$Harvest.Service"
+              Type: "$Harvest.Type"
+              Account: "$Harvest.Account"
+              Region: "$Harvest.Region"
+              Collection: 1
+              CollectionId: 1
+              UniqueFilter: "$Harvest.Module.FilterCriteria"
+              LastSeen: "$Harvest.Dates.LastSeen"
