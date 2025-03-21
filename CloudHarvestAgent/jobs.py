@@ -210,9 +210,18 @@ class JobQueue:
         return self
 
     def add_task_chain_from_dict(self, task_chain_id: str, task_chain_model: dict) -> BaseTaskChain:
+        from CloudHarvestCorePluginManager import Registry
+        task_structure = Registry.find(result_key='cls', name=task_chain_model['name'], category=task_chain_model['category'])
+
+        if task_structure:
+            task_structure = task_structure[0]
+
+        else:
+            raise ValueError(f'{task_chain_id}: Task model `{task_chain_model["category"]}/{task_chain_model["name"]}` not found in the Registry.')
+
         # Create a task chain from the template from the dictionary
         from CloudHarvestCoreTasks.factories import task_chain_from_dict
-        task_chain = task_chain_from_dict(template=task_chain_model['model'], **task_chain_model['config'])
+        task_chain = task_chain_from_dict(template=task_structure, **task_chain_model['config'])
 
         # Override the BaseTaskChain's id with the task's id
         task_chain.id = task_chain_id
@@ -410,7 +419,6 @@ def get_oldest_task_from_queue(client: StrictRedis,
                 id (str) a UUID for the task
                 name (str) the name of the task
                 category (str) the category of the task
-                model (dict) a dictionary representing a TaskChain
                 config (dict) a dictionary of configuration parameters provided by the user or application
                 created (datetime) the time the task was created
             }
