@@ -172,6 +172,11 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
             "architecture": f'{platform.machine()}',
             "available_chains": sorted(Registry.find(category='chain', result_key='name', limit=None)),
             "available_tasks": sorted(Registry.find(category='task', result_key='name', limit=None)),
+            "available_templates": sorted([
+                f'{result["category"]}/{result["name"]}'
+                for result in
+                Registry.find(category='template_*', result_key='*', limit=None)
+            ]),
             "ip": gethostbyname(getfqdn()),
             "heartbeat_seconds": heartbeat_check_rate,
             "name": node_name,
@@ -187,7 +192,7 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
         }
 
         node_info.update({
-            f'pstar.{k}': v
+            f'pstar_{k}': v
             for k, v in CloudHarvestNode.config.get('agent', {}).get('pstar', {}).items()
         })
 
