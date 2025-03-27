@@ -63,6 +63,8 @@ class CloudHarvestNode:
 
         ssl_context = (flat_kwargs['agent.connection.pem'], ) if flat_kwargs.get('agent.connection.pem') else ()
 
+        logger.debug(CloudHarvestNode.flask.url_map)
+
         # Start the Flask application
         CloudHarvestNode.flask.run(host=flat_kwargs.get('agent.connection.host', 'localhost'),
                                    port=flat_kwargs.get('agent.connection.port', 8000),
