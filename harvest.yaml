@@ -101,3 +101,10 @@ api:
 
   # API token for authentication
   # token: api-token-here
+
+########################################################################################################################
+# Plugin Configuration
+########################################################################################################################
+#plugins:
+#  - branch: "0.2.0"
+#    url_or_package_name: "https://github.com/Cloud-Harvest/CloudHarvestPluginAws.git"
