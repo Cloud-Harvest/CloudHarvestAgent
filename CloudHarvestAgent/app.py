@@ -171,6 +171,11 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
         node_role = CloudHarvestNode.ROLE
 
         node_info = {
+            "accounts": sorted([
+                f'{p}:{account}'
+                for p in CloudHarvestNode.config.get('platforms', {}).keys() or []
+                for account in CloudHarvestNode.config['platforms'][p].get('accounts') or []
+            ]),
             "architecture": f'{platform.machine()}',
             "available_chains": sorted(Registry.find(category='chain', result_key='name', limit=None)),
             "available_tasks": sorted(Registry.find(category='task', result_key='name', limit=None)),
@@ -192,11 +197,6 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
             "status": CloudHarvestNode.job_queue.detailed_status(),
             "version": app_metadata.get('version')
         }
-
-        node_info.update({
-            f'pstar_{k}': v
-            for k, v in CloudHarvestNode.config.get('agent', {}).get('pstar', {}).items()
-        })
 
         while True:
             # Update the last heartbeat time
