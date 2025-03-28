@@ -30,19 +30,6 @@ agent:
     # The interval in seconds at which the agent will report metrics to the API.
     reporting_interval_seconds: 1
 
-  # PSTAR - Platform, Service, Type, Account, Region
-  # Determines the PSTAR this agent is associated with. This is used to determine which TaskChains are allowed to
-  # run on this agent. By default, all TaskChains are allowed to run on an agent; however, in larger deployments, you
-  # may want to restrict the TaskChains that can run on a given agent, providing dedicated or isolated agents.
-  pstar:
-    # Each key's value is a regex expression. If TaskChain contains a PSTAR and the expression matches, it will be
-    # allowed to run on this agent.
-#    platform: '*'
-#    service: '*'
-#    type: '*'
-#    account: '*'
-#    region: '*'
-
   # TaskChains and Queue Management
   tasks:
 
@@ -101,6 +88,21 @@ api:
 
   # API token for authentication
   # token: api-token-here
+
+########################################################################################################################
+# Platform Configuration
+# Tells the Agent which platforms and accounts which are available to it. The agent will only run TaskChains that are
+# compatible with the designated platforms and accounts.
+########################################################################################################################
+platforms:
+  aws:              # The platform name.
+    accounts:       # The list of AWS accounts that this agent can access.
+      - 123456789
+      - 987654321
+      - 111111111
+      - 222222222
+    role_name: harvest   # The role to assume when running tasks on this platform. This is applied to the role ARN when
+                         # assuming the role. The role must be defined in the AWS account, such as: arn:aws:iam::123456789:role/harvest
 
 ########################################################################################################################
 # Plugin Configuration
