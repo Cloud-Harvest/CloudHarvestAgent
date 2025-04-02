@@ -9,8 +9,6 @@ report:
     - Os
     - Python
     - Duration
-    - AvailableChains
-    - AvailableTasks
     - Start
     - Last
 
