@@ -252,23 +252,21 @@ def load_configuration_from_file() -> dict:
     if not configuration:
         raise FileNotFoundError(f'No configuration file found in {config_paths}.')
 
-    # Ensure the configuration contains a PSTAR which is critical for the agent to function
-    pstar = configuration.get('agent', {}).get('pstar', {}) or {
-            'platform': '*',
-            'service': '*',
-            'type': '*',
-            'account': '*',
-            'region': '*'
-        }
-
-    configuration['agent'].update(pstar=pstar)
-
-    # Remove any keys that start with a period. This allows YAML anchors to be used in the configuration file.
-    return {
+    result = {
         k:v
         for k, v in configuration.items() or {}.items()
         if not k.startswith('.')
     }
+
+    # Adds the environment variables to the configuration
+    # TODO: Acknowledge a security vulnerability as the general configuration will contain things like API tokens
+    # Should users ever be able to submit their own task configurations to an Agent, they would be able to return
+    # configuration, token, and password information.
+    from CloudHarvestCoreTasks.environment import Environment
+    Environment.merge(result)
+
+    # Remove any keys that start with a period. This allows YAML anchors to be used in the configuration file.
+    return result
 
 def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', quiet: bool = False, **kwargs) -> Logger:
     """
