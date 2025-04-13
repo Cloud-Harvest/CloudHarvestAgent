@@ -27,9 +27,19 @@ report:
           - split_key_to_keys:
               source_key: available_templates
               target_keys:
-                - Type
+                - type_concat
                 - Template
               separator: "/"
+          - split_key_to_keys:
+              source_key: type_concat
+              target_keys:
+                - word_template
+                - Type
+              separator: "_"
+          - drop_keys:
+                keys:
+                  - type_concat
+                  - word_template
           - sort_records:
               keys:
                 - Type
