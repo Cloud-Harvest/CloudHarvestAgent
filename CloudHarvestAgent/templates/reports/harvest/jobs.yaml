@@ -1,15 +1,18 @@
 report:
+  name: Harvest Jobs
   description: Displays the data collection jobs and their status.
   headers:
+    - Start
+    - End
     - Id
     - Stage
     - Name
-    - Description
-    - Status
-    - Records
     - Duration
-    - Start
-    - End
+    - Status
+    - Errors
+    - Records
+    - Bytes
+    - Description
 
   tasks:
     # Data retrieval tasks
@@ -41,7 +44,10 @@ report:
         command: get
         arguments:
           patterns: "*"
-          keys: "meta"
+          keys:
+            - template
+            - metrics
+            - errors
         serialization: true
 
     # Data formatting tasks
@@ -70,9 +76,8 @@ report:
           - splice_key:
               source_key: _id
               start: 6
-          - unnest_records:
-              key_pattern: "meta.*"
-              nest_level: 1
+          - nest_keys:
+              source_keys: meta
 
     - dataset:
         name: Modify completed task data
@@ -84,13 +89,24 @@ report:
               keys: Stage
               default_value:  completed
           - unwind:
-              source_key: meta
-          - unnest_records:
-              key_pattern: "meta.*"
-              nest_level: 1
+              source_key: metrics
           - match_and_remove:
               matching_expressions:
-                - 'Position==Total'
+                - 'metrics.Position==Total'
+          - rename_keys:
+              mapping:
+                template.name: Name
+                template.description: Description
+                metrics.Position: Position
+                metrics.Status: Status
+                metrics.Records: Records
+                metrics.DataBytes: Bytes
+                metrics.Duration: Duration
+                metrics.Start: Start
+                metrics.End: End
+          - count_elements:
+              source_key: errors
+              target_key: Errors
 
     - dataset:
         name: Consolidate data
