@@ -211,7 +211,9 @@ class JobQueue:
 
     def add_task_chain_from_dict(self, task_chain_id: str, task_chain_model: dict) -> BaseTaskChain:
         from CloudHarvestCorePluginManager import Registry
-        task_structure = Registry.find(result_key='cls', name=task_chain_model['name'], category=task_chain_model['category'])
+        from copy import deepcopy
+        # We deepcopy the template so that the copy in the Registry is not modified
+        task_structure = deepcopy(Registry.find(result_key='cls', name=task_chain_model['name'], category=task_chain_model['category']))
 
         if task_structure:
             task_structure = task_structure[0]
