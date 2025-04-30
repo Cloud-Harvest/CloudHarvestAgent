@@ -15,6 +15,11 @@ def main(**kwargs):
     from flask import Flask
     CloudHarvestNode.flask = Flask('CloudHarvestAgent')
 
+    # Install plugins
+    from CloudHarvestCorePluginManager.plugins import generate_plugins_file, install_plugins
+    generate_plugins_file(plugins=CloudHarvestNode.config.get('plugins') or [])
+    install_plugins()
+
     # Find all plugins and register their objects and templates
     from CloudHarvestCorePluginManager import register_all
     register_all()
@@ -23,11 +28,11 @@ def main(**kwargs):
     from CloudHarvestCorePluginManager.registry import Registry
     with CloudHarvestNode.flask.app_context():
         [
-            CloudHarvestNode.flask.register_blueprint(api_blueprint)
-            for api_blueprint in Registry.find(result_key='instances',
-                                               name='harvest_blueprint',
-                                               category='harvest_agent_blueprint')
-            if api_blueprint is not None
+            CloudHarvestNode.flask.register_blueprint(blueprint)
+            for blueprint in Registry.find(result_key='instances',
+                                           category='blueprint',
+                                           name='agent')
+            if blueprint is not None
         ]
 
     CloudHarvestNode.run(**kwargs)

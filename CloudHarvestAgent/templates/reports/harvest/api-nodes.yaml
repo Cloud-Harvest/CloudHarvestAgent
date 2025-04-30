@@ -1,0 +1,38 @@
+report:
+  description: Generates a list of all Agent and API nodes
+  headers:
+    - Role
+    - Name
+    - Ip
+    - Port
+    - Version
+    - Os
+    - Python
+    - Duration
+    - Start
+    - Last
+
+  tasks:
+    - redis:
+        name: Retrieve information on Agent and API nodes
+        result_as: harvest_nodes
+        silo: harvest-nodes
+        command: get
+        arguments:
+          patterns: "api*"
+        serialization: true
+
+    - dataset:
+        name: Format the data
+        data: var.harvest_nodes
+        filters: '.*'
+        stages:
+          - convert_list_to_string:
+                source_key: available_chains
+
+          - convert_list_to_string:
+              source_key: available_tasks
+
+          - title_keys:
+              remove_characters:
+                - "_"

@@ -1,0 +1,46 @@
+report:
+  headers:
+    - Type
+    - Template
+
+  tasks:
+    - redis:
+        name: Retrieve information on Agents
+        result_as: harvest_nodes
+        silo: harvest-nodes
+        command: get
+        arguments:
+          patterns: "agent*"
+        serialization: true
+
+    - dataset:
+        name: Format the data
+        data: var.harvest_nodes
+        filters: '.*'
+        stages:
+          - set_keys:
+              keys:
+                - available_templates
+          - unwind:
+              source_key: available_templates
+          - remove_duplicate_records:
+          - split_key_to_keys:
+              source_key: available_templates
+              target_keys:
+                - type_concat
+                - Template
+              separator: "/"
+          - split_key_to_keys:
+              source_key: type_concat
+              target_keys:
+                - word_template
+                - Type
+              separator: "_"
+          - drop_keys:
+                keys:
+                  - type_concat
+                  - word_template
+          - sort_records:
+              keys:
+                - Type
+                - Template

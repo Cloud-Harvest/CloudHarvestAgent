@@ -1,0 +1,47 @@
+report:
+  description: Generates a list of all Agents
+  headers:
+    - Accounts
+    - Name
+    - Ip
+    - Port
+    - Version
+    - Os
+    - Python
+    - Duration
+    - AvailableChains
+    - AvailableTasks
+    - AvailableTemplates
+    - Start
+    - Last
+
+  tasks:
+    - redis:
+        name: Retrieve information on Agents
+        result_as: harvest_nodes
+        silo: harvest-nodes
+        command: get
+        arguments:
+          patterns: "agent*"
+        serialization: true
+
+    - dataset:
+        name: Format the data
+        data: var.harvest_nodes
+        filters: '.*'
+        stages:
+          - convert_list_to_string:
+              source_key: accounts
+
+          - convert_list_to_string:
+                source_key: available_chains
+
+          - convert_list_to_string:
+              source_key: available_tasks
+
+          - convert_list_to_string:
+              source_key: available_templates
+
+          - title_keys:
+              remove_characters:
+                - "_"

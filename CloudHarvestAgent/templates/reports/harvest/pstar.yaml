@@ -1,0 +1,35 @@
+report:
+  description: |
+    This report returns Platform/Service/Type/Account/Region (PSTAR) data associated with data collection jobs where
+    Platform = the cloud provider (AWS, Azure, Google Cloud)
+    Service = the cloud provide service (EC2, RDS, Route53)
+    Type = the service subtype (Instance, Cluster, Record)
+    Region = the geographic location of the object (us-east-1, ap-southeast-2)
+  
+  headers:
+    - Platform
+    - Service
+    - Type
+    - Account
+    - Region
+    - Count
+    - StartTime
+    - EndTime
+    - Errors
+  
+  tasks:
+    - mongo:
+        collection: pstar
+        filters: '.*'
+
+        pipeline: 
+          "$project": 
+            Platform: 1,
+            Service: 1,
+            Type: 1,
+            Account: 1,
+            Region: 1,
+            Count: 1,
+            StartTime: 1,
+            EndTime: 1,
+            Errors: 1

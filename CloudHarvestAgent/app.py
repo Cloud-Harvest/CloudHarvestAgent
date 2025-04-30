@@ -63,6 +63,8 @@ class CloudHarvestNode:
 
         ssl_context = (flat_kwargs['agent.connection.pem'], ) if flat_kwargs.get('agent.connection.pem') else ()
 
+        logger.debug(CloudHarvestNode.flask.url_map)
+
         # Start the Flask application
         CloudHarvestNode.flask.run(host=flat_kwargs.get('agent.connection.host', 'localhost'),
                                    port=flat_kwargs.get('agent.connection.port', 8000),
@@ -169,9 +171,19 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
         node_role = CloudHarvestNode.ROLE
 
         node_info = {
+            "accounts": sorted([
+                f'{p}:{account}'
+                for p in CloudHarvestNode.config.get('platforms', {}).keys() or []
+                for account in CloudHarvestNode.config['platforms'][p].get('accounts') or []
+            ]),
             "architecture": f'{platform.machine()}',
             "available_chains": sorted(Registry.find(category='chain', result_key='name', limit=None)),
             "available_tasks": sorted(Registry.find(category='task', result_key='name', limit=None)),
+            "available_templates": sorted([
+                f'{result["category"]}/{result["name"]}'
+                for result in
+                Registry.find(category='template_*', result_key='*', limit=None)
+            ]),
             "ip": gethostbyname(getfqdn()),
             "heartbeat_seconds": heartbeat_check_rate,
             "name": node_name,
@@ -185,11 +197,6 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
             "status": CloudHarvestNode.job_queue.detailed_status(),
             "version": app_metadata.get('version')
         }
-
-        node_info.update({
-            f'pstar.{k}': v
-            for k, v in CloudHarvestNode.config.get('agent', {}).get('pstar', {}).items()
-        })
 
         while True:
             # Update the last heartbeat time
@@ -245,23 +252,21 @@ def load_configuration_from_file() -> dict:
     if not configuration:
         raise FileNotFoundError(f'No configuration file found in {config_paths}.')
 
-    # Ensure the configuration contains a PSTAR which is critical for the agent to function
-    pstar = configuration.get('agent', {}).get('pstar', {}) or {
-            'platform': '*',
-            'service': '*',
-            'type': '*',
-            'account': '*',
-            'region': '*'
-        }
-
-    configuration['agent'].update(pstar=pstar)
-
-    # Remove any keys that start with a period. This allows YAML anchors to be used in the configuration file.
-    return {
+    result = {
         k:v
         for k, v in configuration.items() or {}.items()
         if not k.startswith('.')
     }
+
+    # Adds the environment variables to the configuration
+    # TODO: Acknowledge a security vulnerability as the general configuration will contain things like API tokens
+    # Should users ever be able to submit their own task configurations to an Agent, they would be able to return
+    # configuration, token, and password information.
+    from CloudHarvestCoreTasks.environment import Environment
+    Environment.merge(result)
+
+    # Remove any keys that start with a period. This allows YAML anchors to be used in the configuration file.
+    return result
 
 def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', quiet: bool = False, **kwargs) -> Logger:
     """
