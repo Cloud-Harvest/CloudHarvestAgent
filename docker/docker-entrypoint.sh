@@ -19,7 +19,5 @@ cp -nv "$base_path/harvest.yaml" "$base_path/app/harvest.yaml"
 # 3. Install the plugins
 # 4. Start the application
 source "$base_path/venv/bin/activate" \
-&& "$base_path/docker/make_plugins.txt.py" \
-&& touch -a "$base_path/app/plugins.txt" \
-&& pip install -r "$base_path/app/plugins.txt" \
+&& export PYTHONPATH="$base_path" \
 && python "$base_path/CloudHarvestAgent"

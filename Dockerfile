@@ -12,6 +12,7 @@ RUN /bin/bash -c " \
         && pip install --upgrade pip \
         && pip install setuptools \
         && pip install -r requirements.txt \
+        && export PYTHONPATH=/src \
         && python -m unittest discover --verbose -s /src/tests/ \
     "
 

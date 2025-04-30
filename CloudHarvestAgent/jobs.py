@@ -402,7 +402,7 @@ class JobQueue:
 
 
 def get_oldest_task_from_queue(client: StrictRedis,
-                               accepted_chain_priorities: List[int]) -> Tuple[str, dict]:
+                               accepted_chain_priorities: List[int]) -> Tuple[str, dict] or None:
     """
     Retrieves the oldest task from the queue.
 
@@ -459,6 +459,9 @@ def get_oldest_task_from_queue(client: StrictRedis,
                     # This happens when a task expires. We skip it at that point and move on to the next
                     # task in the queue.
                     continue
+
+    return None
+
 
 class JobQueueStatusCodes:
     complete = 'complete'
