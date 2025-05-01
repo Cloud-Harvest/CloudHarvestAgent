@@ -2,6 +2,7 @@ CloudHarvestCoreTasks @ git+https://github.com/Cloud-Harvest/CloudHarvestCoreTas
 Flask
 PyYAML
 flatten-json
+gunicorn
 pymongo
 pytest
 redis

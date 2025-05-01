@@ -25,7 +25,7 @@ def favicon():
     The favicon endpoint.
     :return: No content
     """
-    return '', 204
+    return Response(status=204)
 
 def not_implemented_error() -> Response:
     return jsonify({
