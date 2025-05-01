@@ -1,99 +1,7 @@
-"""
-This file contains the main static application class, CloudHarvestAgent. This class contains the Flask application,
-JobQueue instance, and configuration for the agent. The run method is used to start.
-"""
+from CloudHarvestCoreTasks.dataset import WalkableDict
+from CloudHarvestCoreTasks.environment import Environment
 
 from logging import Logger
-
-
-class CloudHarvestNode:
-    """
-    A static class which contains the Flask application, JobQueue instance, and configuration for the agent.
-    """
-    ROLE = 'agent'
-
-    from CloudHarvestAgent.api import Api
-    from CloudHarvestAgent.jobs import JobQueue
-    from flask import Flask
-    api: Api = None
-    flask: Flask = None
-    config = {}
-    job_queue: JobQueue = None
-
-    @staticmethod
-    def run(**kwargs):
-        """
-        This method is used to start the agent. It configures logging, creates the JobQueue, and starts the Flask
-        application. It accepts all keyword arguments provided by the configuration file.
-        """
-
-        flat_kwargs = flatten_dict_preserve_lists(kwargs)
-
-        # Configure logging
-        logger = load_logging(log_destination=flat_kwargs.get('agent.logging.location'),
-                              log_level=flat_kwargs.get('agent.logging.level'),
-                              quiet=flat_kwargs.get('agent.logging.quiet'))
-
-        logger.info('Agent configuration loaded successfully.')
-
-        logger.info('Agent starting')
-
-        # Create a new API interface which will be used to communicate with the CloudHarvestApi
-        CloudHarvestNode.api = CloudHarvestNode.Api(host=flat_kwargs.get('api.host'),
-                                                    port=flat_kwargs.get('api.port'),
-                                                    token=flat_kwargs.get('api.token'),
-                                                    pem=flat_kwargs.get('api.ssl.pem'),
-                                                    verify=flat_kwargs.get('api.ssl.verify'))
-
-        # Retrieves the silo configurations used by the agent and TaskChains
-        CloudHarvestNode.refresh_silos()
-
-        # Start the heartbeat process
-        start_node_heartbeat()
-
-        # Instantiate the JobQueue
-        queue = CloudHarvestNode.JobQueue(api=CloudHarvestNode.api,
-                                          reporting_interval_seconds=flat_kwargs.get('agent.metrics.reporting_interval_seconds'),
-                                          **{k[12:]: v for k, v in flat_kwargs.items() if k.startswith('agent.tasks.')})
-
-        CloudHarvestNode.job_queue = queue
-
-        if flat_kwargs.get('agent.tasks.auto_start', True):
-            CloudHarvestNode.job_queue.start()
-
-        ssl_context = (flat_kwargs['agent.connection.pem'], ) if flat_kwargs.get('agent.connection.pem') else ()
-
-        logger.debug(CloudHarvestNode.flask.url_map)
-
-        # Start the Flask application
-        CloudHarvestNode.flask.run(host=flat_kwargs.get('agent.connection.host', 'localhost'),
-                                   port=flat_kwargs.get('agent.connection.port', 8000),
-                                   ssl_context=ssl_context)
-
-    @staticmethod
-    def refresh_silos():
-        """
-        Creates silo connections for the agent.
-        :return:
-        """
-        from logging import getLogger
-        logger = getLogger('harvest')
-
-        from CloudHarvestCoreTasks.silos import add_silo
-        silos = CloudHarvestNode.api.request('get', 'silos/get_all')
-
-        if silos['status_code'] != 200:
-            from sys import exit
-            logger.critical(f'Could not retrieve silos from the API. {silos["status_code"]}:{silos["reason"]} {silos["url"]}. Exiting.')
-            exit(1)
-
-        # Add the silos to make sure they are up to date
-        [
-            add_silo(name=silo_name, **silo_config)
-            for silo_name, silo_config in silos['response']['result'].items()
-        ]
-
-        return
 
 
 def flatten_dict_preserve_lists(d, parent_key='', sep='.') -> dict:
@@ -121,27 +29,29 @@ def flatten_dict_preserve_lists(d, parent_key='', sep='.') -> dict:
 
     return dict(items)
 
-def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: float = 1):
+
+def start_node_heartbeat(config: WalkableDict):
     """
     Start the heartbeat process on the harvest-nodes silo. This process will update the node status in the Redis
     cache at regular intervals.
 
     Args:
-    expiration_multiplier (int): The multiplier to use when setting the expiration time for the node status in the
-                                 Redis cache, rounded up to the nearest integer.
-    heartbeat_check_rate (float): The rate at which the heartbeat process should check the node status.
+    config (WalkableDict): The configuration for the node heartbeat process.
 
     Example:
-        >>> # Start the heartbeat process with a 5x expiration multiplier and a check rate of 1 second. The Agent will be
+        >>> # Start the heartbeat process with a 5x expiration multiplier and a check rate of 1 second. The API will be
         >>> # considered offline if it has not updated its status in 5 seconds.
         >>> start_node_heartbeat(expiration_multiplier=5, heartbeat_check_rate=1)
         >>>
-        >>> # Start the heartbeat process with an expiration multiplier of 10 and a check rate of 2 seconds. The Agent will
+        >>> # Start the heartbeat process with an expiration multiplier of 10 and a check rate of 2 seconds. The API will
         >>> # be considered offline if it has not updated its status in 10 seconds.
         >>> start_node_heartbeat(expiration_multiplier=10, heartbeat_check_rate=2)
 
     Returns: The thread object that is running the heartbeat process.
     """
+
+    heartbeat_check_rate = config.walk('agent.heartbeat.check_rate') or 1
+    expiration_multiplier = config.walk('agent.heartbeat.expiration_multiplier') or 5
 
     import platform
 
@@ -168,13 +78,13 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
 
         from CloudHarvestCorePluginManager import Registry
         node_name = platform.node()
-        node_role = CloudHarvestNode.ROLE
+        node_role = 'agent'
 
         node_info = {
             "accounts": sorted([
                 f'{p}:{account}'
-                for p in CloudHarvestNode.config.get('platforms', {}).keys() or []
-                for account in CloudHarvestNode.config['platforms'][p].get('accounts') or []
+                for p in config.get('platforms', {}).keys() or []
+                for account in config['platforms'][p].get('accounts') or []
             ]),
             "architecture": f'{platform.machine()}',
             "available_chains": sorted(Registry.find(category='chain', result_key='name', limit=None)),
@@ -188,13 +98,13 @@ def start_node_heartbeat(expiration_multiplier: int = 5, heartbeat_check_rate: f
             "heartbeat_seconds": heartbeat_check_rate,
             "name": node_name,
             "os": platform.freedesktop_os_release().get('PRETTY_NAME'),
-            "plugins": CloudHarvestNode.config.get('plugins', []),
-            "port": CloudHarvestNode.config.get('agent', {}).get('connection', {}).get('port') or 8000,
+            "plugins": config.walk('plugins', []),
+            "port": config.walk('agent.connection.port') or 8500,
             "python": platform.python_version(),
-            "queue": CloudHarvestNode.job_queue.detailed_status(),
+            "queue": Environment.get('queue_object').detailed_status(),
             "role": node_role,
             "start": start_datetime.isoformat(),
-            "status": CloudHarvestNode.job_queue.detailed_status(),
+            "status": Environment.get('queue_object').detailed_status(),
             "version": app_metadata.get('version')
         }
 
@@ -252,25 +162,17 @@ def load_configuration_from_file() -> dict:
     if not configuration:
         raise FileNotFoundError(f'No configuration file found in {config_paths}.')
 
-    result = {
+    # Remove any keys that start with a period. This allows YAML anchors to be used in the configuration file.
+    return {
         k:v
         for k, v in configuration.items() or {}.items()
         if not k.startswith('.')
     }
 
-    # Adds the environment variables to the configuration
-    # TODO: Acknowledge a security vulnerability as the general configuration will contain things like API tokens
-    # Should users ever be able to submit their own task configurations to an Agent, they would be able to return
-    # configuration, token, and password information.
-    from CloudHarvestCoreTasks.environment import Environment
-    Environment.merge(result)
-
-    # Remove any keys that start with a period. This allows YAML anchors to be used in the configuration file.
-    return result
 
 def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', quiet: bool = False, **kwargs) -> Logger:
     """
-    This method configures logging for the Agent.
+    This method configures logging for the api.
 
     Arguments
     log_destination (str, optional): The destination directory for the log file. Defaults to './app/logs/'.
@@ -309,7 +211,7 @@ def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', 
 
     # configure the file handler
     from os.path import join
-    fh = RotatingFileHandler(join(_location, 'agent.log'), maxBytes=10000000, backupCount=5)
+    fh = RotatingFileHandler(join(_location, 'api.log'), maxBytes=10000000, backupCount=5)
     fh.setFormatter(fmt=log_format)
     fh.setLevel(DEBUG)
 
@@ -327,3 +229,28 @@ def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', 
     new_logger.debug(f'Logging enabled successfully. Log location: {log_destination}')
 
     return new_logger
+
+
+def refresh_silos():
+    """
+    Creates silo connections for the agent.
+    :return:
+    """
+    from logging import getLogger
+    logger = getLogger('harvest')
+
+    from CloudHarvestCoreTasks.silos import add_silo
+    silos = Environment.get('api_object').request('get', 'silos/get_all')
+
+    if silos['status_code'] != 200:
+        from sys import exit
+        logger.critical(f'Could not retrieve silos from the API. {silos["status_code"]}:{silos["reason"]} {silos["url"]}. Exiting.')
+        exit(1)
+
+    # Add the silos to make sure they are up to date
+    [
+        add_silo(name=silo_name, **silo_config)
+        for silo_name, silo_config in silos['response']['result'].items()
+    ]
+
+    return

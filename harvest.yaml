@@ -4,16 +4,6 @@
 # Agent Configuration
 ########################################################################################################################
 agent:
-  connection:
-    # Hostname or IP address the agent should bind to
-    host: 127.0.0.1
-
-    # Port the agent should bind to
-    port: 8500
-
-    # SSL configuration for the agent
-    pem: ./app/harvest-self-signed.pem
-
   # Manages log files and logging levels.
   logging:
     # Location where logs should be stored
