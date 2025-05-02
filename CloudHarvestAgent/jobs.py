@@ -1,4 +1,6 @@
 from logging import getLogger
+
+from CloudHarvestCoreTasks.redis import unformat_hset
 from redis import StrictRedis
 from threading import Thread
 from typing import Dict, List, Tuple
@@ -85,7 +87,7 @@ class JobQueue:
         from CloudHarvestCoreTasks.silos import get_silo
         from time import sleep
 
-        silo = get_silo('harvest-task-queue')
+        silo = get_silo('harvest-tasks')
         client: StrictRedis = silo.connect()
 
         # If there is room in the JobQueue, and it is running, continue to check the Redis queue
@@ -139,7 +141,6 @@ class JobQueue:
         A thread that reports the progress of the task chains to the API.
         :return:
         """
-        from datetime import datetime, timezone
         from json import dumps
         from time import sleep
 
@@ -152,20 +153,21 @@ class JobQueue:
             try:
 
                 for task_chain_id, task_chain in list(self.task_chains.items()):
-                    task_chain_metadata = {
-                                    'id': task_chain.id,
-                                    'name': task_chain.name,
-                                    'status': str(task_chain.status),
-                                    'start': task_chain.start,
-                                    'end': task_chain.end,
-                                    'updated': datetime.now(tz=timezone.utc),
-                                } | task_chain.detailed_progress()
+                    task_chain_metadata = task_chain.redis_struct()
+
+                    from CloudHarvestCoreTasks.environment import Environment
+                    task_chain_metadata['agent'] = Environment.get('agent.name')
+
+                    from CloudHarvestCoreTasks.redis import format_hset
 
                     # Report the progress of the task chain to the API
-                    client.setex(name=task_chain_id, value=dumps(task_chain_metadata), time=3600)
+                    client.hset(name=task_chain_id, mapping=format_hset(task_chain_metadata))
 
-                    # Escape the loop if the task chain is complete or terminating
-                    if self.status in [TaskStatusCodes.complete, TaskStatusCodes.terminating]:
+                    # Set the expiration time for the task chain information
+                    client.expire(name=task_chain_id, time=900)
+
+                    # Escape the loop if the task chain is complete, errored, or termination
+                    if self.status in [TaskStatusCodes.complete, TaskStatusCodes.error, TaskStatusCodes.terminating]:
                         break
 
             except Exception as e:
@@ -230,7 +232,7 @@ class JobQueue:
         task_chain.id = task_chain_id
 
         # Set the TaskChain's result silo
-        task_chain.results_silo = 'harvest-task-results'
+        task_chain.results_silo = 'harvest-tasks'
 
         # Add this task chain to the JobQueue
         self.add_task_chain(task_chain_id=task_chain_id, task_chain=task_chain)
@@ -403,7 +405,7 @@ class JobQueue:
 
 
 def get_oldest_task_from_queue(client: StrictRedis,
-                               accepted_chain_priorities: List[int]) -> Tuple[str, dict] or None:
+                               accepted_chain_priorities: List[int]) -> Tuple[str, str, dict] or None:
     """
     Retrieves the oldest task from the queue.
 
@@ -414,7 +416,7 @@ def get_oldest_task_from_queue(client: StrictRedis,
 
     Returns
     -------
-    Tuple[str, dict] or None: The oldest task from the Redis database as a tuple of task_id and task.
+    Tuple[str, str, dict] or None: (parent_task_id, task_id, task_configuration)
     (
         task_id (str): The ID of the task.
         task (dict): The task as a dictionary.
@@ -441,19 +443,21 @@ def get_oldest_task_from_queue(client: StrictRedis,
 
             if task_queue_name:
                 # Get the task itself
-                task = client.get(name=task_queue_name)
+                from CloudHarvestCoreTasks.redis import unformat_hset
+                task = unformat_hset(client.hgetall(name=task_queue_name) or {})
+
+                if task.get('status') != 'enqueued':
+                    # The task is not in the queue, so we skip it
+                    continue
 
                 # Remove the task from the queue so that it is not processed again
                 client.delete(task_queue_name)
 
                 if task:
-                    from json import loads
                     logger.debug(f'Retrieved task `{task_queue_name}` from the queue.')
 
-                    task_config = loads(task)
-
                     # Returns the first valid task from the queue, breaking the valid task and priority queue loops
-                    return task_config['id'], task_config
+                    return task['id'], task
 
                 else:
                     # No task for this task id.
