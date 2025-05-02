@@ -49,6 +49,12 @@ else:
 config = WalkableDict(**load_configuration_from_file())
 config['agent']['connection'] = vars(args)
 config['agent']['pid'] = getpid()
+config['agent']['name'] = ':'.join([
+    'agent',
+    args.host,
+    str(args.port),
+    str(getpid())
+])
 
 # Makes the configuration available throughout the app
 Environment.merge(config)
