@@ -154,6 +154,7 @@ class JobQueue:
                 for task_chain_id, task_chain in list(self.task_chains.items()):
                     task_chain_metadata = {
                                     'id': task_chain.id,
+                                    'name': task_chain.name,
                                     'status': str(task_chain.status),
                                     'start': task_chain.start,
                                     'end': task_chain.end,
