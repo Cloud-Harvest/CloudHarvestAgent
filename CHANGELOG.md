@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.1.1
+- CloudHarvestCoreTasks 0.6.4
+- [Part of the Redis Task Standardization Effort](https://github.com/Cloud-Harvest/CloudHarvestAgent/issues/8)
+- Improved heartbeat by reducing the size of the upload payload
+
 ## 0.1.0
 - Refactor of the startup routine to be compatible with `gunicorn`
 - Plugins are now handled by the CloudHarvestCorePluginManager
