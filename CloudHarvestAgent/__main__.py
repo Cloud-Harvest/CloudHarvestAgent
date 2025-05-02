@@ -15,6 +15,7 @@ from CloudHarvestCoreTasks.dataset import WalkableDict
 from CloudHarvestCoreTasks.environment import Environment
 from argparse import ArgumentParser, Namespace
 from flask import Flask
+from os import getpid
 
 # Imports objects which need to be registered by the CloudHarvestCorePluginManager
 from CloudHarvestAgent.__register__ import *
@@ -47,6 +48,7 @@ else:
 # Load the configuration
 config = WalkableDict(**load_configuration_from_file())
 config['agent']['connection'] = vars(args)
+config['agent']['pid'] = getpid()
 
 # Makes the configuration available throughout the app
 Environment.merge(config)
