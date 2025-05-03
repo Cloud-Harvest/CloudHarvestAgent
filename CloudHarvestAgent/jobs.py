@@ -158,7 +158,7 @@ class JobQueue:
                     from CloudHarvestCoreTasks.environment import Environment
                     task_chain_metadata['agent'] = Environment.get('agent.name')
 
-                    from CloudHarvestCoreTasks.redis import format_hset
+                    from CloudHarvestCoreTasks.tasks.redis import format_hset
 
                     # Report the progress of the task chain to the API
                     client.hset(name=task_chain_id, mapping=format_hset(task_chain_metadata))
@@ -443,7 +443,7 @@ def get_oldest_task_from_queue(client: StrictRedis,
 
             if task_queue_name:
                 # Get the task itself
-                from CloudHarvestCoreTasks.redis import unformat_hset
+                from CloudHarvestCoreTasks.tasks.redis import unformat_hset
                 task = unformat_hset(client.hgetall(name=task_queue_name) or {})
 
                 if task.get('status') != 'enqueued':
