@@ -1,6 +1,5 @@
 from logging import getLogger
 
-from CloudHarvestCoreTasks.redis import unformat_hset
 from redis import StrictRedis
 from threading import Thread
 from typing import Dict, List, Tuple
