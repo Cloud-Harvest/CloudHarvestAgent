@@ -135,7 +135,7 @@ def start_node_heartbeat(config: WalkableDict):
         while True:
             # Update the last heartbeat time
             last_datetime = datetime.now(tz=timezone.utc)
-            updated_node_info = {
+            node_info |= {
                 'last': last_datetime.isoformat(),
                 'duration': (last_datetime - start_datetime).total_seconds()
             }
@@ -143,7 +143,7 @@ def start_node_heartbeat(config: WalkableDict):
             # Update the node status in the Redis cache
             try:
                 # Record the information to Redis
-                client.hset(node_record_identifier, mapping=format_for_redis(updated_node_info))
+                client.hset(node_record_identifier, mapping=format_for_redis(node_info))
 
                 # Set the expiration time for the node record
                 client.expire(node_record_identifier, int(expiration_multiplier * heartbeat_check_rate))
