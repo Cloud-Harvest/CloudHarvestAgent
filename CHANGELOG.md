@@ -10,6 +10,7 @@
   - templates got clobbered (missing `deepycopy`)
   - datetimes where not uniformly TZ aware
   - missing TaskChain classes did not raise useful errors
+- Most TaskChain status updates are now handled within the `BaseTaskChain` class
 
 ## 0.1.0
 - Refactor of the startup routine to be compatible with `gunicorn`

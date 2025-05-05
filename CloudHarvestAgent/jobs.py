@@ -143,28 +143,6 @@ class TaskChainQueue:
 
         while self.status == JobQueueStatusCodes.running:
 
-            # Report status to Redis
-            for task_object in self.tasks.values():
-                task_chain = task_object['chain']
-
-                try:
-                    if task_chain.start and not task_chain.end:
-                        from datetime import datetime
-                        # Should the task chain exceed the timeout, issue a termination of the task chain
-                        if (datetime.now(tz=timezone.utc) - task_chain.start).total_seconds() >= self.chain_timeout_seconds:
-                            task_chain.status = TaskStatusCodes.terminating
-                            logger.warning(
-                                f'{task_chain.redis_name} terminating because it exceeded the timeout of {self.chain_timeout_seconds}.')
-
-                    report_struct = task_chain.redis_struct()  # Redis data fields
-                    report_struct['agent'] = Environment.get('agent.name')  # Agent name (unknown to the TaskChain)
-
-                    # Report to Redis
-                    self.task_silo.hset(name=task_chain.redis_name, mapping=format_hset(report_struct))
-
-                except Exception as ex:
-                    logger.error(f'{task_chain.redis_name} failed to report status to server: {ex}')
-
             # Add new tasks to the queue
             while True:
                 # Check that the queue is not already full
