@@ -151,7 +151,7 @@ class TaskChainQueue:
                     if task_chain.start and not task_chain.end:
                         from datetime import datetime
                         # Should the task chain exceed the timeout, issue a termination of the task chain
-                        if (datetime.now() - task_chain.start).total_seconds() >= self.chain_timeout_seconds:
+                        if (datetime.now(tz=timezone.utc) - task_chain.start).total_seconds() >= self.chain_timeout_seconds:
                             task_chain.status = TaskStatusCodes.terminating
                             logger.warning(
                                 f'{task_chain.redis_name} terminating because it exceeded the timeout of {self.chain_timeout_seconds}.')
@@ -187,9 +187,16 @@ class TaskChainQueue:
                         task_chain_class = Registry.find(result_key='cls',
                                                          name=new_task['name'],
                                                          category=new_task['category'])
+
+                        if not task_chain_class:
+                            logger.error(f'No task chain class found for {new_task["name"]}.')
+                            self._update_task_status(f'task::{new_task["id"]}', TaskStatusCodes.error)
+                            continue
+
                         # Instantiate the new task
                         from CloudHarvestCoreTasks.factories import task_chain_from_dict
-                        task_chain = task_chain_from_dict(template=task_chain_class[0], **new_task['config'])
+                        from copy import deepcopy
+                        task_chain = task_chain_from_dict(template=deepcopy(task_chain_class[0]), **new_task['config'])
                         task_chain.id = new_task['id']
                         task_chain.parent = new_task['parent']
 
