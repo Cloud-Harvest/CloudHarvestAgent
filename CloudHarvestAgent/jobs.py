@@ -175,11 +175,7 @@ class TaskChainQueue:
                         from CloudHarvestCoreTasks.factories import task_chain_from_dict
                         from copy import deepcopy
                         task_chain = task_chain_from_dict(template=deepcopy(task_chain_class[0]), **new_task['config'])
-                        task_chain.id = new_task['id']
-                        task_chain.parent = new_task['parent']
-
-                        # Report the task chain instantiation to Redis
-                        self._update_task_status(task_chain.redis_name, TaskStatusCodes.initialized)
+                        task_chain.agent = Environment.get('agent.name')
 
                         # Create a new thread for this task chain
                         thread = Thread(target=task_chain.run, daemon=True)
@@ -194,9 +190,6 @@ class TaskChainQueue:
                         thread.start()
 
                         self.task_chains_processed += 1
-
-                        # Report task chain status to Redis
-                        self._update_task_status(task_chain.redis_name, TaskStatusCodes.running)
 
                         logger.info(f'{task_chain.redis_name} started.')
 
@@ -217,7 +210,7 @@ class TaskChainQueue:
                     redis_name, final_status = task_chain.redis_name, task_chain.status
 
                     # Report the final status to Redis
-                    self.task_silo.hset(name=task_chain.redis_name, key='status', value=task_chain.status)
+                    task_chain.update_status()
 
                     # Remove it from the task pool
                     self.tasks.pop(task_chain.redis_name, None)
