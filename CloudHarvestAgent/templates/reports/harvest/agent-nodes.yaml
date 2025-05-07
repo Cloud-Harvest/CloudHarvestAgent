@@ -24,7 +24,7 @@ report:
         arguments:
           pattern: "agent:*"
         result_as: redis_names
-        result_to_list_with_key: redis_name   # Returns a list of tuple (cursor, keys)
+        result_to_list_with_key: redis_name
 
     - redis:
         name: Agent Details
