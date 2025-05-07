@@ -11,6 +11,7 @@
   - datetimes where not uniformly TZ aware
   - missing TaskChain classes did not raise useful errors
 - Most TaskChain status updates are now handled within the `BaseTaskChain` class
+- Updated many templates
 
 ## 0.1.0
 - Refactor of the startup routine to be compatible with `gunicorn`
