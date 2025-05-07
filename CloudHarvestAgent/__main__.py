@@ -2,7 +2,7 @@
 Entrypoint for the CloudHarvestAgent
 """
 from CloudHarvestAgent.api import Api
-from CloudHarvestAgent.jobs import JobQueue
+from CloudHarvestAgent.jobs import TaskChainQueue
 from CloudHarvestAgent.startup import (
     load_configuration_from_file,
     load_logging,
@@ -15,6 +15,7 @@ from CloudHarvestCoreTasks.dataset import WalkableDict
 from CloudHarvestCoreTasks.environment import Environment
 from argparse import ArgumentParser, Namespace
 from flask import Flask
+from os import getpid
 
 # Imports objects which need to be registered by the CloudHarvestCorePluginManager
 from CloudHarvestAgent.__register__ import *
@@ -47,6 +48,13 @@ else:
 # Load the configuration
 config = WalkableDict(**load_configuration_from_file())
 config['agent']['connection'] = vars(args)
+config['agent']['pid'] = getpid()
+config['agent']['name'] = ':'.join([
+    'agent',
+    args.host,
+    str(args.port),
+    str(getpid())
+])
 
 # Makes the configuration available throughout the app
 Environment.merge(config)
@@ -83,16 +91,15 @@ api = Api(host=config.walk('api.host'),
           pem=config.walk('api.ssl.pem'),
           verify=config.walk('api.ssl.verify'))
 
-# Instantiate the JobQueue
-queue = JobQueue(api=api,
-                 reporting_interval_seconds=config.walk('agent.metrics.reporting_interval_seconds'),
-                 **config.walk('agent.tasks', {}))
 
 Environment.add(name='api_object', value=api)
-Environment.add(name='queue_object', value=queue)
 
 # Retrieves the list of silos from the API
 refresh_silos()
+
+# Instantiate the JobQueue
+queue = TaskChainQueue(api=api, **config.walk('agent.tasks', {}))
+Environment.add(name='queue_object', value=queue)
 
 # Start the node heartbeat
 start_node_heartbeat(config)

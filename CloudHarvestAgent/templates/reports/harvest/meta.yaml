@@ -9,26 +9,33 @@ report:
     - Type
     - Account
     - Region
-    - Collection
-    - CollectionId
+    - UniqueIdentifier
+    - Location
     - LastSeen
+    - DeactivatedOn
 
   tasks:
     - mongo:
         name: get meta collection
+        collection: metadata
+        silo: harvest-core
+        filters: '.*'
         result_as: result
-        collection: meta
-        filters: '*'
 
-        pipeline:
-          - $project:
-              Active: "$Harvest.Active"
-              Platform: "$Harvest.Platform"
-              Service: "$Harvest.Service"
-              Type: "$Harvest.Type"
-              Account: "$Harvest.Account"
-              Region: "$Harvest.Region"
-              Collection: 1
-              CollectionId: 1
-              UniqueFilter: "$Harvest.Module.FilterCriteria"
-              LastSeen: "$Harvest.Dates.LastSeen"
+        arguments:
+          pipeline:
+            - $project:
+                Active: "$Active"
+                Platform: "$Platform"
+                Service: "$Service"
+                Type: "$Type"
+                Account: "$Account"
+                Region: "$Region"
+                Location:
+                  $concat:
+                    - "$Silo.Name"
+                    - "/"
+                    - "$Silo.Collection"
+                UniqueIdentifier: "$UniqueIdentifier"
+                LastSeen: "$Dates.LastSeen"
+                DeactivatedOn: "$Dates.DeactivatedOn"

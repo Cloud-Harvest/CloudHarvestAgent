@@ -14,25 +14,34 @@ report:
 
   tasks:
     - redis:
-        name: Retrieve information on Agent and API nodes
-        result_as: harvest_nodes
+        name: API Scan
+        description: Scan for all API nodes
         silo: harvest-nodes
-        command: get
+        command: keys
         arguments:
-          patterns: "api*"
-        serialization: true
+          pattern: "api:*"
+        result_as: redis_names
+        result_to_list_with_key: redis_name
+
+    - redis:
+        name: API Details
+        description: Get the data points for the API nodes
+        silo: harvest-nodes
+        command: hgetall
+        arguments:
+          name: item.redis_name
+        iterate: var.redis_names
+        result_as:
+          name: api_nodes
+          mode: append
+          include:
+            redis_name: item.redis_name
 
     - dataset:
         name: Format the data
-        data: var.harvest_nodes
+        data: var.api_nodes
         filters: '.*'
         stages:
-          - convert_list_to_string:
-                source_key: available_chains
-
-          - convert_list_to_string:
-              source_key: available_tasks
-
           - title_keys:
               remove_characters:
                 - "_"

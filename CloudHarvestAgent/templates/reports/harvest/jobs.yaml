@@ -5,123 +5,58 @@ report:
     - Start
     - End
     - Id
-    - Stage
+    - Parent
     - Name
-    - Duration
+    - Type
     - Status
-    - Errors
-    - Records
-    - Bytes
-    - Description
+    - Agent
+    - Position
+    - Total
 
   tasks:
-    # Data retrieval tasks
     - redis:
-        name: Get Enqueued tasks
-        description: Displays the status of the tasks that are currently awaiting processing.
-        result_as: harvest_task_queue
-        silo: harvest-task-queue
-        command: get
-        arguments:
-          patterns: "task::*"
-        serialization: true
-
-    - redis:
-        name: Get Active tasks
-        description: Displays the status of the tasks that are currently being processed.
-        result_as: harvest_tasks
+        name: Retrieve Tasks
+        description: Scan for all tasks
         silo: harvest-tasks
-        command: get
+        command: scan
         arguments:
-          patterns: "task::*"
-        serialization: true
-
+          pattern: "task:*"
+        result_as: scan_result
+        result_to_list_with_key: redis_name
+        
     - redis:
-        name: Get Completed tasks
-        description: Displays the status of the tasks that have been completed.
-        result_as: harvest_task_results
-        silo: harvest-task-results
-        command: get
+        name: Task Details
+        description: Get the data points for the tasks
+        silo: harvest-tasks
+        command: hmget
         arguments:
-          patterns: "*"
+          name: item.redis_name
           keys:
-            - template
-            - metrics
-            - errors
-        serialization: true
-
-    # Data formatting tasks
-    - dataset:
-        name: Modify enqueued task data
-        description: Formats the data from the enqueued tasks.
-        data: var.harvest_task_queue
-        result_as: harvest_task_queue
-        stages:
-          - add_keys:
-              keys: Stage
-              default_value:  enqueued
-          - splice_key:
-              source_key: _id
-              start: 6        # 'task::' is 6 characters long
-
-    - dataset:
-        name: Modify processing task data
-        description: Formats the data from the processing tasks.
-        data: var.harvest_tasks
-        result_as: harvest_tasks
-        stages:
-          - add_keys:
-              keys: Stage
-              default_value:  processing
-          - splice_key:
-              source_key: _id
-              start: 6
-          - nest_keys:
-              source_keys: meta
+            - redis_name
+            - id
+            - parent
+            - name
+            - type
+            - status
+            - agent
+            - position
+            - total
+            - start
+            - end  
+        rekey: True
+        serializer: hget
+        iterate: var.scan_result
+        result_as:
+          name: task_details
+          mode: append
+          include:
+            scan_result: item.redis_name
 
     - dataset:
-        name: Modify completed task data
-        description: Formats the data from the completed tasks.
-        data: var.harvest_task_results
-        result_as: harvest_task_results
-        stages:
-          - add_keys:
-              keys: Stage
-              default_value:  completed
-          - unwind:
-              source_key: metrics
-          - match_and_remove:
-              matching_expressions:
-                - 'metrics.Position==Total'
-          - rename_keys:
-              mapping:
-                template.name: Name
-                template.description: Description
-                metrics.Position: Position
-                metrics.Status: Status
-                metrics.Records: Records
-                metrics.DataBytes: Bytes
-                metrics.Duration: Duration
-                metrics.Start: Start
-                metrics.End: End
-          - count_elements:
-              source_key: errors
-              target_key: Errors
-
-    - dataset:
-        name: Consolidate data
-        description: Combines the data from the enqueued, active, and completed tasks.
+        name: Format the data
+        data: var.task_details
         filters: '.*'
-        result_as: harvest_jobs
         stages:
-          - add_records:
-              records:
-                - var.harvest_task_queue
-                - var.harvest_tasks
-                - var.harvest_task_results
-          - rename_keys:
-              mapping:
-                _id: Id
           - title_keys:
               remove_characters:
                 - "_"

@@ -5,17 +5,34 @@ report:
 
   tasks:
     - redis:
-        name: Retrieve information on Agents
-        result_as: harvest_nodes
+        name: Agent Scan
+        description: Scan for all Agent nodes
         silo: harvest-nodes
-        command: get
+        command: keys
         arguments:
-          patterns: "agent*"
-        serialization: true
+          pattern: "agent:*"
+        result_as: redis_names
+        result_to_list_with_key: redis_name
+
+    - redis:
+        name: Agent Details
+        description: Get the data points for the Agent nodes
+        silo: harvest-nodes
+        command: hgetall
+        arguments:
+          name: item.redis_name
+        serializer: hget
+        iterate: var.redis_names
+        result_as:
+          name: agent_nodes
+          mode: append
+          include:
+            redis_name: item.redis_name
+
 
     - dataset:
         name: Format the data
-        data: var.harvest_nodes
+        data: var.agent_nodes
         filters: '.*'
         stages:
           - set_keys:

@@ -15,11 +15,6 @@ agent:
     # Suppress console output from the logging engine.
     # quiet: true
 
-  # Agent metrics reporting
-  metrics:
-    # The interval in seconds at which the agent will report metrics to the API.
-    reporting_interval_seconds: 1
-
   # TaskChains and Queue Management
   tasks:
 
@@ -32,9 +27,6 @@ agent:
 
     # Starts the JobQueue immediately upon agent start.
     auto_start: true
-
-    # Frequency in seconds at which the agent reports progress on running TaskChains.
-    chain_progress_reporting_interval_seconds: 6
 
     # Prevent certain TaskChains from running on this agent by specifying the Chain's registered task name. By default,
     # all Tasks and TaskChains are allowed to run on an agent. Selective agent configuration is useful in larger
@@ -52,7 +44,7 @@ agent:
     # sequential iteration over each key to retrieve metadata (`list_keys` followed by sequential `describe_key` calls).
     chain_timeout_seconds: 7200
 
-    # How often the agent checks for new TaskChains in the queue when it has slots available.
+    # How often the agent checks for new TaskChains and report statistics to Redis.
     queue_check_interval_seconds: 1
 
     # Maximum number of TaskChains within the job queue. If the queue is full, the agent will not retrieve new TaskChains
