@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 0.1.2
+- Updated to conform with CloudHarvestCoreTasks 0.6.5
+
 ## 0.1.1
 - CloudHarvestCoreTasks 0.6.4
 - [Part of the Redis Task Standardization Effort](https://github.com/Cloud-Harvest/CloudHarvestAgent/issues/8)
