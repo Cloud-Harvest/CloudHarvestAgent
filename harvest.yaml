@@ -78,13 +78,15 @@ api:
 ########################################################################################################################
 platforms:
   aws:              # The platform name.
-    accounts:       # The list of AWS accounts that this agent can access.
-      - 123456789
-      - 987654321
-      - 111111111
-      - 222222222
-    role_name: harvest   # The role to assume when running tasks on this platform. This is applied to the role ARN when
-                         # assuming the role. The role must be defined in the AWS account, such as: arn:aws:iam::123456789:role/harvest
+    accounts:       # The list of AWS accounts that this agent can access with the account identifier as the key and other configurations defined as key/value pairs.
+      123456789:
+        role: harvest-readonly
+      987654321:
+        role: harvest-readwrite
+      111111111:
+        role: harvest-readonly
+    default_role: harvest     # The default role name to assume when running tasks on this platform. Used when 'role' is
+                              # not defined for a specific account.
 
 ########################################################################################################################
 # Plugin Configuration
