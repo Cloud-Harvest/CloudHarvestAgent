@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 0.2.0
+- Removed references to deprecated `CloudHarvestNode`
+
 ## 0.1.4
 - Updated to conform with CloudHarvestCoreTasks 0.7.0
 
