@@ -8,3 +8,4 @@ from CloudHarvestAgent.blueprints.agent import agent_blueprint
 from CloudHarvestAgent.blueprints.home import home_blueprint
 from CloudHarvestAgent.blueprints.queue import queue_blueprint
 from CloudHarvestAgent.blueprints.tasks import tasks_blueprint
+from CloudHarvestAgent.blueprints.templates import templates_blueprint
