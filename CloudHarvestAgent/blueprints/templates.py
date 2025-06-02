@@ -12,7 +12,8 @@ templates_blueprint = HarvestAgentBlueprint(
 )
 
 
-@templates_blueprint.route(rule='describe_templates/<template_category?>', methods=['GET'])
+@templates_blueprint.route(rule='describe_templates', methods=['GET'])
+@templates_blueprint.route(rule='describe_templates/<template_category>', methods=['GET'])
 def describe_templates(template_category: str = None) -> Response:
     """
     Returns the registry entry for all templates in the specified category. When no category is specified, it
@@ -101,7 +102,8 @@ def get_template(template_category: str, template_name: str) -> Response:
         }
     )
 
-@templates_blueprint.route(rule='list_templates/<template_category?>', methods=['GET'])
+@templates_blueprint.route(rule='list_templates', methods=['GET'])
+@templates_blueprint.route(rule='list_templates/<template_category>', methods=['GET'])
 def list_templates(template_category: str = None) -> Response:
     """
     Returns a list of templates based on the specified category. When no category is specified, it returns all templates.
