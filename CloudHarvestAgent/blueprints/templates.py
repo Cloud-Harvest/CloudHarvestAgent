@@ -7,7 +7,7 @@ logger = getLogger('harvest')
 
 # Blueprint Configuration
 templates_blueprint = HarvestAgentBlueprint(
-    'tasks_bp', __name__,
+    'templates_bp', __name__,
     url_prefix='/templates'
 )
 
