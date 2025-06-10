@@ -44,6 +44,14 @@ agent:
     # sequential iteration over each key to retrieve metadata (`list_keys` followed by sequential `describe_key` calls).
     chain_timeout_seconds: 7200
 
+    heartbeat:
+      # The heartbeat rate for the agent. This is how often the agent will send a heartbeat to the Redis database.
+      check_rate: 1
+
+      # Multiplies the check rate to determine how many heartbeats can be missed before the agent is considered offline.
+      # Once offline, the agent and its templates will automatically be removed from the Redis database.
+      expiration_multiplier: 5
+
     # How often the agent checks for new TaskChains and report statistics to Redis.
     queue_check_interval_seconds: 1
 

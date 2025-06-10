@@ -68,8 +68,11 @@ def start_node_heartbeat(config: WalkableDict):
         start_datetime = datetime.now(tz=timezone.utc)
 
         # Get the Redis client
-        silo = get_silo('harvest-nodes')
-        client = silo.connect()     # A StrictRedis instance
+        node_silo = get_silo('harvest-nodes')
+        node_client = node_silo.connect()     # A StrictRedis instance
+
+        template_silo = get_silo('harvest-templates')
+        template_client = template_silo.connect()  # A StrictRedis instance
 
         # Get the application metadata
         import json
@@ -89,11 +92,6 @@ def start_node_heartbeat(config: WalkableDict):
             "architecture": f'{platform.machine()}',
             "available_chains": sorted(Registry.find(category='chain', result_key='name', limit=None)),
             "available_tasks": sorted(Registry.find(category='task', result_key='name', limit=None)),
-            "available_templates": sorted([
-                f'{result["category"]}/{result["name"]}'
-                for result in
-                Registry.find(category='template_*', result_key='*', limit=None)
-            ]),
             "ip": gethostbyname(getfqdn()),
             "heartbeat_seconds": heartbeat_check_rate,
             "name": node_name,
@@ -130,25 +128,64 @@ def start_node_heartbeat(config: WalkableDict):
             return dictionary
 
         # Record the information to Redis
-        client.hset(node_record_identifier, mapping=format_for_redis(node_info))
+        node_client.hset(node_record_identifier, mapping=format_for_redis(node_info))
+
+        stored_templates = None
 
         while True:
+            templates = Registry.find(category='template_*', result_key='*', limit=None)
+
             # Update the last heartbeat time
             last_datetime = datetime.now(tz=timezone.utc)
             node_info |= {
+                "available_templates": sorted([
+                    f'{result["category"]}/{result["name"]}'
+                    for result in templates
+                ]),
                 'last': last_datetime.isoformat(),
                 'duration': (last_datetime - start_datetime).total_seconds()
             }
 
             # Update the node status in the Redis cache
             try:
+                expiration = int(expiration_multiplier * heartbeat_check_rate)
+
                 # Record the information to Redis
-                client.hset(node_record_identifier, mapping=format_for_redis(node_info))
+                node_client.hset(node_record_identifier, mapping=format_for_redis(node_info))
 
                 # Set the expiration time for the node record
-                client.expire(node_record_identifier, int(expiration_multiplier * heartbeat_check_rate))
+                node_client.expire(node_record_identifier, expiration)
 
                 logger.debug(f'heartbeat: OK')
+
+                # Update the templates but only if they have changed
+                if stored_templates != templates:
+                    stored_templates = templates
+
+                    # Create a record of the templates in Redis
+                    for template in templates:
+                        template_identifier = f'{template["category"].split('_', 1)[1]}/{template["name"]}'
+                        task_class = list(template.get('cls', {}).keys())[0] if template.get('cls') else None
+                        if not task_class:
+                            continue
+
+                        from copy import deepcopy
+                        from json import loads
+                        task_config = deepcopy(template['cls'][task_class])
+                        task_config['class'] = task_class
+
+                        template_client.hset(
+                            name=template_identifier,
+                            mapping=format_for_redis(task_config)
+                        )
+
+                        template_client.expire(template_identifier, expiration)
+
+                else:
+                    # If the templates have not changed, just update their expiration time
+                    for template in templates:
+                        template_identifier = f'{template["category"].split("_", 1)[1]}/{template["name"]}'
+                        template_client.expire(template_identifier, expiration)
 
             except Exception as e:
                 logger.error(f'heartbeat: Could not update silo `harvest-nodes`: {e.args}')
