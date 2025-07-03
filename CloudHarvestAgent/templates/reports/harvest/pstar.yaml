@@ -28,14 +28,14 @@ report:
 
         arguments:
           pipeline:
-            "$project":
-              Platform: 1
-              Service: 1
-              Type: 1
-              Account: 1
-              Region: 1
-              Records: 1
-              Duration: 1
-              Start: 1
-              End: 1
-              Errors: 1
+            - $project:
+                Platform: 1
+                Service: 1
+                Type: 1
+                Account: 1
+                Region: 1
+                Records: 1
+                Duration: 1
+                Start: 1
+                End: 1
+                Errors: 1
