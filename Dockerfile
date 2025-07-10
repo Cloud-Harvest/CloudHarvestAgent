@@ -11,7 +11,7 @@ RUN /bin/bash -c " \
         && source /src/venv/bin/activate \
         && pip install --upgrade pip \
         && pip install setuptools \
-        && pip install -r requirements.txt \
+        && pip install . \
         && export PYTHONPATH=/src \
         && python -m unittest discover --verbose -s /src/tests/ \
     "
