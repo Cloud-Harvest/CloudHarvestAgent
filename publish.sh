@@ -2,7 +2,7 @@
 
 # publish.sh
 # This script is used to build, test, and publish a Docker image for the Cloud Harvest Agent.
-# It fetches the version number from meta.json and uses it along with the git commit's short name to tag the Docker image.
+# It fetches the version number from pyproject.toml and uses it along with the git commit's short name to tag the Docker image.
 # The script also checks that all commits have been pushed to git and that the current branch is main.
 #
 # Note: This script requires Docker, git, and grep to be installed and properly configured on the system where it will be run.
@@ -57,10 +57,10 @@ done
 
 echo "All required binaries are installed."
 
-# Fetch the version number from meta.json using bash and standard libraries/binaries only
-version=$(grep -oP '(?<="version": ")[^"]*' meta.json)
+# Fetch the version number from pyproject.toml using bash and standard libraries/binaries only
+version=$(grep -oP '(?<=^version = ")[^"]+(?=")' pyproject.toml)
 
-echo "Version number fetched from meta.json: $version"
+echo "Version number fetched from pyproject.toml: $version"
 
 # Check that all commits have been pushed to git
 if [ $dry_run -eq 0 ]; then

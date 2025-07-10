@@ -1,9 +1,0 @@
-CloudHarvestCoreTasks @ git+https://github.com/Cloud-Harvest/CloudHarvestCoreTasks.git@0.8.0
-Flask
-PyYAML
-flatten-json
-gunicorn
-pymongo
-pytest
-redis
-requests

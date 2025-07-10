@@ -72,9 +72,9 @@ def start_node_heartbeat(config: WalkableDict):
         client = silo.connect()     # A StrictRedis instance
 
         # Get the application metadata
-        import json
-        with open('./meta.json') as meta_file:
-            app_metadata = json.load(meta_file)
+        import tomli
+        with open('./pyproject.toml', 'rb') as meta_file:
+            app_metadata = tomli.load(meta_file).get('project') or {}
 
         from CloudHarvestCorePluginManager import Registry
         node_name = platform.node()
@@ -123,6 +123,7 @@ def start_node_heartbeat(config: WalkableDict):
             """
 
             # Format the records
+            import json
             for key, value in dictionary.items():
                 if not isinstance(value, (str, int, float)):
                     dictionary[key] = json.dumps(value, default=str)

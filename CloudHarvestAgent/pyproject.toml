@@ -1,0 +1,35 @@
+[build-system]
+requires = ["flit-core>=3.7"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.sdist]
+include = [
+    "templates/**/*.yaml",
+    "pyproject.toml",
+]
+
+[project]
+authors = [ { name = "Cloud Harvest" } ]
+classifiers = [ "Programming Language :: Python :: 3.13" ]
+dependencies = [
+    "CloudHarvestCoreTasks @ git+https://github.com/Cloud-Harvest/CloudHarvestCoreTasks.git@0.8.1",
+    "Flask",
+    "PyYAML",
+    "flatten-json",
+    "gunicorn",
+    "pymongo",
+    "pytest",
+    "redis",
+    "requests"
+]
+description = "This is the Agent worker for CloudHarvest, responsible for executing tasks and managing resources."
+name = "CloudHarvestAgent"
+readme = "README.md"
+requires-python = ">=3.13"
+version = "0.1.6"
+
+[project.license]
+file = "LICENSE"
+
+[project.urls]
+homepage = "https://github.com/Cloud-Harvest/CloudHarvestAgent"
