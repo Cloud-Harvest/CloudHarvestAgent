@@ -36,6 +36,10 @@ report:
                 Region: 1
                 Records: 1
                 Duration: 1
-                Start: 1
-                End: 1
+                Start:
+                  $dateToString:
+                    date: '$Start'
+                End:
+                  $dateToString:
+                    date: '$End'
                 Errors: 1
