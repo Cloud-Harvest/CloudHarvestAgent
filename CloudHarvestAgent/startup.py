@@ -238,7 +238,7 @@ def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', 
 
     # configure the file handler
     from os.path import join
-    fh = RotatingFileHandler(join(_location, 'api.log'), maxBytes=10000000, backupCount=5)
+    fh = RotatingFileHandler(join(_location, 'agent.log'), maxBytes=10000000, backupCount=5)
     fh.setFormatter(fmt=log_format)
     fh.setLevel(DEBUG)
 
