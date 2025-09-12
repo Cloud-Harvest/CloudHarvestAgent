@@ -226,7 +226,7 @@ def load_logging(log_destination: str = './app/logs/', log_level: str = 'info', 
     log_level_attribute = getattr(lm, level.upper())
 
     # formatting
-    log_format = Formatter(fmt='[%(asctime)s][%(process)d][%(levelname)s][%(filename)s] %(message)s')
+    log_format = Formatter(fmt='[%(asctime)s][%(process)d][%(levelname)s][%(filename)s:%(lineno)d] %(message)s')
 
     # file handler
     from pathlib import Path
