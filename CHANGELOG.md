@@ -3,6 +3,7 @@
 ## 0.1.7
 - Updated to conform with CloudHarvestCoreTasks 0.8.2
 - Include line numbers in log outputs
+- Added `/templates` endpoint
 
 ## 0.1.6
 - Changed build model to use `pyproject.toml`
