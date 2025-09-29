@@ -4,6 +4,11 @@ WORKDIR /src
 
 ENV PIP_ROOT_USER_ACTION=ignore
 
+# Install vim and purge apt cache
+RUN apt-get update \
+    && apt-get install -y vim \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY . .
 
 RUN /bin/bash -c " \
