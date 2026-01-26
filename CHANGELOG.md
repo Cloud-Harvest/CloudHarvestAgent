@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.2.0
+- Removed references to deprecated `CloudHarvestNode`
+- Updated to conform with CloudHarvestCoreTasks 0.9.0
+- Worker now includes the template identifier when creating task chains.
+
 ## 0.1.7
 - Updated to conform with CloudHarvestCoreTasks 0.8.2
 - Include line numbers in log outputs

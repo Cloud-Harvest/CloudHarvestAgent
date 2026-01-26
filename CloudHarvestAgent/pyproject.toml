@@ -12,7 +12,7 @@ include = [
 authors = [ { name = "Cloud Harvest" } ]
 classifiers = [ "Programming Language :: Python :: 3.13" ]
 dependencies = [
-    "CloudHarvestCoreTasks @ git+https://github.com/Cloud-Harvest/CloudHarvestCoreTasks.git@0.8.2",
+    "CloudHarvestCoreTasks @ git+https://github.com/Cloud-Harvest/CloudHarvestCoreTasks.git@0.9.0",
     "Flask",
     "PyYAML",
     "flatten-json",
@@ -26,7 +26,7 @@ description = "This is the Agent worker for CloudHarvest, responsible for execut
 name = "CloudHarvestAgent"
 readme = "README.md"
 requires-python = ">=3.13"
-version = "0.1.7"
+version = "0.2.0"
 
 [project.license]
 file = "LICENSE"
