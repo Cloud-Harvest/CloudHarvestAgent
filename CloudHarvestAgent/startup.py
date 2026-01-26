@@ -89,9 +89,15 @@ def start_node_heartbeat(config: WalkableDict):
 
             # Get the Redis client
             node_silo = get_silo('harvest-nodes')
+            if not node_silo:
+                logger.error('Silo `harvest-nodes` not found.')
+
             node_client = node_silo.connect()     # A StrictRedis instance
 
             template_silo = get_silo('harvest-templates')
+            if not template_silo:
+                logger.error('Silo `harvest-templates` not found.')
+
             template_client = template_silo.connect()  # A StrictRedis instance
 
             # Get the application metadata
@@ -315,6 +321,10 @@ def refresh_silos():
         from sys import exit
         logger.critical(f'Could not retrieve silos from the API. {silos["status_code"]}:{silos["reason"]} {silos["url"]}. Exiting.')
         exit(1)
+
+    if silos['response']['result'] is None:
+        logger.warning('No silos found in the API.')
+        return
 
     # Add the silos to make sure they are up to date
     [
