@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # publish.sh
-# This script is used to build, test, and publish a Docker image for the Cloud Harvest API.
+# This script is used to build, test, and publish a Docker image for the Cloud Harvest Agent.
 # It fetches the version number from pyproject.toml and uses it along with the git commit's short name to tag the Docker image.
 # The script also checks that all commits have been pushed to git and that the current branch is main.
 #
@@ -9,7 +9,7 @@
 
 # Initialize our own variables
 dry_run=0
-image_name="fionajuneleathers/cloud-harvest-api"
+image_name="fionajuneleathers/cloud-harvest-agent"
 skip_git_check=0
 
 # Check for --dry-run, --skip-git-check and --help flags
