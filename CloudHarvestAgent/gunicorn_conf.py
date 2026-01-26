@@ -4,7 +4,7 @@ import multiprocessing
 import socket
 
 # Bind address
-bind = os.getenv("GUNICORN_BIND", "0.0.0.0:8080")
+bind = os.getenv("GUNICORN_BIND", "0.0.0.0:8500")
 
 # TLS: prefer explicit GUNICORN_CERTFILE / GUNICORN_KEYFILE, fall back to PEMFILE for both
 _pem = os.getenv("PEMFILE", './app/harvest-self-signed.pem')
