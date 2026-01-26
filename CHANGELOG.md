@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 0.2.1
+- Updated to conform with CloudHarvestCoreTasks 0.9.0
+- Worker now includes the template identifier when creating task chains.
+- Updated publication script to better tag docker images.
+- Updated the dockerfile to use `python:3.14-trixie` as the base image.
+- Switched to using the `gunicorn_conf.py` file for `gunicorn` configuration.
+- Heartbeat thread now has a more comprehensive exception handling to prevent silent failures.
+
 ## 0.1.7
 - Updated to conform with CloudHarvestCoreTasks 0.8.2
 - Include line numbers in log outputs

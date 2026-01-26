@@ -174,7 +174,11 @@ class TaskChainQueue:
                         # Instantiate the new task
                         from CloudHarvestCoreTasks.factories import task_chain_from_dict
                         from copy import deepcopy
-                        task_chain = task_chain_from_dict(template=deepcopy(task_chain_class[0]), **new_task['config'])
+                        task_chain = task_chain_from_dict(
+                            template_identifier=f"{new_task['category']}/{new_task['name']}",
+                            template=deepcopy(task_chain_class[0]),
+                            **new_task['config']
+                        )
                         task_chain.agent = Environment.get('agent.name')
 
                         # Create a new thread for this task chain
