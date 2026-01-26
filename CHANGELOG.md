@@ -4,6 +4,8 @@
 - Removed references to deprecated `CloudHarvestNode`
 - Updated to conform with CloudHarvestCoreTasks 0.9.0
 - Worker now includes the template identifier when creating task chains.
+- Updated publication script to better tag docker images.
+- Updated the dockerfile to use `python:3.14-trixie` as the base image.
 
 ## 0.1.7
 - Updated to conform with CloudHarvestCoreTasks 0.8.2
