@@ -37,5 +37,9 @@ report:
                     - "/"
                     - "$Silo.Collection"
                 UniqueIdentifier: "$UniqueIdentifier"
-                LastSeen: "$Dates.LastSeen"
-                DeactivatedOn: "$Dates.DeactivatedOn"
+                LastSeen:
+                  $dateToString:
+                    date: "$Dates.LastSeen"
+                DeactivatedOn:
+                  $dateToString:
+                    date: "$Dates.DeactivatedOn"

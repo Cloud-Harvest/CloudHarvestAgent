@@ -1,7 +1,16 @@
 # CHANGELOG
 
-## 0.2.0
-- Removed references to deprecated `CloudHarvestNode`
+## 0.1.7
+- Updated to conform with CloudHarvestCoreTasks 0.8.2
+- Include line numbers in log outputs
+- Added `/templates` endpoint
+
+## 0.1.6
+- Changed build model to use `pyproject.toml`
+- Updated to conform with CloudHarvestCoreTasks 0.8.1
+
+## 0.1.5
+- Updated to conform with CloudHarvestCoreTasks 0.8.0
 
 ## 0.1.4
 - Updated to conform with CloudHarvestCoreTasks 0.7.0
