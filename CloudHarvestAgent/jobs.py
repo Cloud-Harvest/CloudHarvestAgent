@@ -195,7 +195,7 @@ class TaskChainQueue:
 
                         self.task_chains_processed += 1
 
-                        logger.info(f'{task_chain.redis_name} started.')
+                        logger.info(f'{task_chain.redis_name} ({task_chain.template_identifier}) started.')
 
                     except Exception as ex:
                         logger.error(f'Error while adding task chain {new_task["id"]} to the JobQueue: {ex.args}')
@@ -219,7 +219,7 @@ class TaskChainQueue:
                     # Remove it from the task pool
                     self.tasks.pop(task_chain.redis_name, None)
 
-                    logger.info(f'{redis_name} removed from the task pool with status: {final_status}')
+                    logger.info(f'{redis_name} ({task_chain.template_identifier}) removed from the task pool with status: {final_status}')
 
             from time import sleep
             logger.debug('queue worker cycle complete')
