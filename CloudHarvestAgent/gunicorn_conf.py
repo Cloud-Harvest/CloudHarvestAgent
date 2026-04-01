@@ -13,7 +13,7 @@ keyfile = os.getenv("GUNICORN_KEYFILE") or _pem or None
 # Worker count: prefer HARVEST_AGENT_WORKERS, fall back to launcher default (5)
 workers = int(os.getenv("HARVEST_AGENT_WORKERS", "5"))
 
-# Worker class and threads tuned for I/O-bound workloads (requests.Session\(\) pooling)
+# Worker class and threads tuned for I/O-bound workloads (requests.Session() pooling)
 worker_class = os.getenv("GUNICORN_WORKER_CLASS", "gthread")
 threads = int(os.getenv("GUNICORN_THREADS", "25"))
 
