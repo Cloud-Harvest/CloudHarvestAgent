@@ -14,6 +14,11 @@ APP_NAME="${app_name^^}"
 debug=0
 conf="$base_path/$app_name/gunicorn_conf.py"
 
+# Default values for debug mode options
+host="127.0.0.1"
+port="8000"
+pemfile="$base_path/certs/agent.pem"
+
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
     case $1 in
@@ -30,6 +35,11 @@ while [[ "$#" -gt 0 ]]; do
             echo "Options:"
             echo "  --debug              Launches the application using the python interpreter instead of gunicorn"
             echo "  --help               Show this help message"
+            echo
+            echo "Debug Mode Options"
+            echo "  --host <host>        Host to bind the application to (default: $host)"
+            echo "  --port <port>        Port to bind the application to (default: $port)"
+            echo "  --pemfile <path>    Path to the PEM file for SSL (default: $pemfile)"
             exit 0
             ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
