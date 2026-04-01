@@ -34,6 +34,7 @@ while [[ "$#" -gt 0 ]]; do
             echo
             echo "Options:"
             echo "  --debug              Launches the application using the python interpreter instead of gunicorn"
+            echo "  --conf <path>        Path to the Gunicorn configuration file (default: $conf)"
             echo "  --help               Show this help message"
             echo
             echo "Debug Mode Options"
