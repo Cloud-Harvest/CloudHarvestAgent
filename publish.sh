@@ -12,21 +12,20 @@ dry_run=0
 image_name="fionajuneleathers/cloud-harvest-agent"
 skip_git_check=0
 
-# Check for --dry-run, --skip-git-check and --help flags
-for arg in "$@"
-do
-    case $arg in
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
         --dry-run)
         dry_run=1
-        shift # Remove --dry-run from processing
+        shift
         ;;
         --skip-git-check)
         skip_git_check=1
-        shift # Remove --skip-git-check from processing
+        shift
         ;;
         --progress)
         progress="$2"
-        shift 2 # Remove --progress and its value from processing
+        shift 2
         ;;
         --help)
         echo "Usage: ./publish.sh [--dry-run] [--progress] [--skip-git-check] [--help]"
@@ -39,7 +38,8 @@ do
         exit 0
         ;;
         *)
-        shift # Remove generic argument from processing
+        echo "Unknown option: $1"
+        shift
         ;;
     esac
 done
