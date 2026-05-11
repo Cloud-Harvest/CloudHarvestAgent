@@ -11,32 +11,36 @@ app_name="CloudHarvestAgent"
 APP_NAME="${app_name^^}"
 
 # Default values for options
-host="0.0.0.0"
-port="8500"
-pemfile="$base_path/app/harvest-self-signed.pem"
 debug=0
-workers="${HARVEST_AGENT_WORKERS:-5}"
+conf="$base_path/$app_name/gunicorn_conf.py"
+
+# Default values for debug mode options
+host="127.0.0.1"
+port="8000"
+pemfile="$base_path/certs/agent.pem"
 
 # Parse command-line arguments
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        --host) host="$2"; shift ;;
-        --port) port="$2"; shift ;;
-        --pemfile) pemfile="$2"; shift ;;
-        --debug) debug=1 ;;
-        --workers) workers="$2"; shift ;;
+        --conf)
+          conf="$2";
+          shift ;;
+        --debug)
+          debug=1
+          ;;
         --help)
             # Echo the launcher script's help message
             echo "$app_name Usage: [options]"
             echo
             echo "Options:"
-            echo "  --host <host>        Host to bind to (default: $host)"
-            echo "  --port <port>        Port to bind to (default: $port)"
-            echo "  --pemfile <file>     Path to the PEM file (default: $pemfile)"
             echo "  --debug              Launches the application using the python interpreter instead of gunicorn"
-            echo "  --workers <num>      Number of gunicorn workers (default: $workers)"
+            echo "  --conf <path>        Path to the Gunicorn configuration file (default: $conf)"
             echo "  --help               Show this help message"
-
+            echo
+            echo "Debug Mode Options"
+            echo "  --host <host>        Host to bind the application to (default: $host)"
+            echo "  --port <port>        Port to bind the application to (default: $port)"
+            echo "  --pemfile <path>    Path to the PEM file for SSL (default: $pemfile)"
             exit 0
             ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
@@ -58,9 +62,6 @@ done
 cp -nv "$base_path/harvest.yaml" "$base_path/app/harvest.yaml"
 
 # Set environment variables
-export "${APP_NAME}_HOST"=$host
-export "${APP_NAME}_PORT"=$port
-export "${APP_NAME}_PEMFILE"=$pemfile
 export PYTHONPATH="$base_path"
 
 # Start the application
@@ -72,8 +73,8 @@ if [[ "$debug" -eq 1 ]]; then
 else
     # Production mode: Use Gunicorn
     source "$base_path/venv/bin/activate" \
-    && echo "Starting Gunicorn with $workers workers..." \
-    && gunicorn -w "$workers" -b "$host:$port" --certfile "$pemfile" --keyfile "$pemfile" "$app_name.__main__:app"
+    && echo "Starting Gunicorn..." \
+    && gunicorn -c "$conf" "$app_name.__main__:app"
 fi
 
 echo "$app_name has stopped."
